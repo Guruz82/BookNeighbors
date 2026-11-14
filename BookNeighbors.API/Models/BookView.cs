@@ -1,3 +1,4 @@
+namespace BookNeighbors.Api.Models;
 public class BookView
 {
     public Guid Id { get; set; }

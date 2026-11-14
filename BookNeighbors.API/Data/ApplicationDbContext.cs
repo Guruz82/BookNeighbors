@@ -1,4 +1,5 @@
 
+using BookNeighbors.Api.Models;
 using BookNeighbors.Api.Models.Identity;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
@@ -96,6 +97,36 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
             entity.HasIndex(e => e.BookId);
              entity.Property(e => e.BookId)
             .HasColumnName("book_id");
+        });
+
+        modelBuilder.Entity<BookCategory>(entity =>
+{
+    entity.HasKey(x => new { x.BookId, x.CategoryId });
+
+    entity.HasOne(x => x.Book)
+        .WithMany(b => b.BookCategories)
+        .HasForeignKey(x => x.BookId);
+
+    entity.HasOne(x => x.Category)
+        .WithMany()
+        .HasForeignKey(x => x.CategoryId);
+});
+
+        modelBuilder.Entity<LoanRequest>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+
+            entity.HasOne(e => e.Book)
+                .WithMany()
+                .HasForeignKey(e => e.BookId);
+
+            entity.HasOne(e => e.Requester)
+                .WithMany()
+                .HasForeignKey(e => e.RequesterId);
+
+            entity.HasOne(e => e.Status)
+                .WithMany()
+                .HasForeignKey(e => e.StatusId);
         });
     }
 }

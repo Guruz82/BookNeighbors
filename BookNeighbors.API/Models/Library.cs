@@ -2,7 +2,7 @@ using BookNeighbors.Api.Models.Identity;
 
 
 using NetTopologySuite.Geometries;
- 
+ namespace BookNeighbors.Api.Models;
 
 public class Library
 {
