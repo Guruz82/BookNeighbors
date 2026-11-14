@@ -2,9 +2,9 @@ namespace BookNeighbors.Api.Models;
 public class Book
 {
     public Guid Id { get; set; }
-     public Guid LibraryId { get; set; }
+    public Guid LibraryId { get; set; }
     public Library Library { get; set; } = null!;
-
+    public ICollection<BookCategory> BookCategories { get; set; } = new List<BookCategory>();
     public string Title { get; set; } = string.Empty;
     public string Author { get; set; } = string.Empty;
     public string? Description { get; set; } 

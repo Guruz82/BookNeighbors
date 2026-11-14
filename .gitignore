@@ -1,0 +1,53 @@
+# .NET / Visual Studio / VS Code
+**/bin/
+**/obj/
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# macOS / Windows
+.DS_Store
+.AppleDouble
+Thumbs.db
+Desktop.ini
+
+# Build, test e log
+TestResults/
+artifacts/
+**/publish/
+*.log
+coverage/
+coverage.*
+*.coverage
+*.coveragexml
+
+# Configurazioni locali e credenziali
+.env
+.env.*
+!.env.example
+appsettings.Development.json
+appsettings.Local.json
+appsettings.Production.json
+secrets.json
+*.pfx
+*.p12
+*.pem
+*.key
+
+# Backup e database locali
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+*.bak
+*.dump
+
+# NuGet locali
+*.nupkg
+*.snupkg
+packages/

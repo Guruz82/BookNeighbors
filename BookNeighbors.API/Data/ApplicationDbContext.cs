@@ -9,6 +9,13 @@ namespace BookNeighbors.Api.Data;
 
 public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid>, Guid>
 {
+    public DbSet<Library> Libraries => Set<Library>();
+    public DbSet<Book> Books => Set<Book>();
+    public DbSet<Category> Categories => Set<Category>();
+    public DbSet<BookCategory> BookCategories => Set<BookCategory>();
+    public DbSet<BookView> BookViews => Set<BookView>();
+    public DbSet<LoanRequest> LoanRequests => Set<LoanRequest>();
+    public DbSet<LoanRequestStatus> LoanRequestStatuses => Set<LoanRequestStatus>();
     public ApplicationDbContext(
         DbContextOptions<ApplicationDbContext> options)
         : base(options)
@@ -73,11 +80,13 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
             entity.Property(e => e.LibraryId)
             .HasColumnName("library_id");
              entity.Property(u => u.Title)
-                .HasMaxLength(255);
+                .HasMaxLength(255)
+                .IsRequired();
                  entity.Property(e => e.ISBN)
                 .HasMaxLength(17);
                  entity.Property(u => u.Author)
-                .HasMaxLength(200);
+                .HasMaxLength(200)
+                .IsRequired();
                  entity.Property(u => u.ImageUrl    )
                 .HasMaxLength(1024);
                  entity.Property(u => u.ThumbnailUrl)
@@ -118,15 +127,48 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
 
             entity.HasOne(e => e.Book)
                 .WithMany()
-                .HasForeignKey(e => e.BookId);
+                .HasForeignKey(e => e.BookId)
+                .OnDelete(DeleteBehavior.Restrict);
 
             entity.HasOne(e => e.Requester)
                 .WithMany()
-                .HasForeignKey(e => e.RequesterId);
+                .HasForeignKey(e => e.RequesterId)
+                .OnDelete(DeleteBehavior.Restrict);
 
             entity.HasOne(e => e.Status)
                 .WithMany()
-                .HasForeignKey(e => e.StatusId);
+                .HasForeignKey(e => e.StatusId)
+                .OnDelete(DeleteBehavior.Restrict);
+  
+               entity.Property(e => e.BookId)
+                .HasColumnName("book_id"); 
+                entity.Property(e => e.RequesterId)
+                .HasColumnName("requester_id");
+                entity.Property(e => e.StatusId)
+                .HasColumnName("status_id");
         });
+        modelBuilder.Entity<LoanRequestStatus>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Name)
+                    .HasMaxLength(50)
+                    .IsRequired();
+
+                entity.HasIndex(e => e.Name)
+                    .IsUnique();
+            });
+
+            modelBuilder.Entity<Category>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Name)
+                    .HasMaxLength(100)
+                    .IsRequired();
+
+                entity.HasIndex(e => e.Name)
+                    .IsUnique();
+            });
     }
 }

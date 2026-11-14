@@ -12,6 +12,7 @@ public class LoanRequest
     public ApplicationUser Requester { get; set; } = null!;
     public Guid StatusId { get; set; }
     public LoanRequestStatus Status { get; set; } = null!;
+    public DateTime? DueDate { get; set; }
      public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
 }
