@@ -2,7 +2,7 @@
 
 using BookNeighbors.Api.Models;
 using BookNeighbors.Api.Models.Identity;
-using BookNeighbors.API.Interfaces;
+using BookNeighbors.Api.Interfaces;
 using BookNeighbors.API.Mappers.LibraryMapper;
 using BookNeighbors.DTO.Libraries;
 using Microsoft.AspNetCore.Authorization;
@@ -69,7 +69,7 @@ public class LibraryController( UserManager<ApplicationUser> userManager, ILibra
         catch (DbUpdateException ex) when (
                 ex.InnerException is PostgresException pgEx &&
                 pgEx.SqlState == PostgresErrorCodes.UniqueViolation &&
-                pgEx.ConstraintName == "IX_Libraries_UserId")
+                pgEx.ConstraintName == "IX_Libraries_user_id")
             {
                 return Conflict("L'utente possiede già una libreria personale.");
             }
