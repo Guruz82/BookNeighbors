@@ -1,0 +1,14 @@
+namespace BookNeighbors.DTO.Search;
+
+public record BookSearchResponse(
+    Guid Id,
+    Guid LibraryId,
+    string LibraryName,
+    string? City,
+    string Title,
+    string Author,
+    string? ThumbnailUrl,
+    double Latitude,
+    double Longitude,
+    double DistanceKm
+);

@@ -1,0 +1,114 @@
+
+using BookNeighbors.Api.Models.Identity;
+using BookNeighbors.DTO.Account;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
+
+namespace BookNeighbors.Api.Controllers;
+
+[ApiController]
+[Route("api/account")]
+public class AccountController(
+    UserManager<ApplicationUser> userManager) : ControllerBase
+{
+    [AllowAnonymous]
+    [HttpPost("register")]
+    public async Task<IActionResult> Register(
+        [FromBody] AccountRegisterRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.DisplayName))
+            return BadRequest("Il nome visualizzato è obbligatorio.");
+
+        if (!request.PrivacyNoticeAcknowledged)
+            return BadRequest(
+                "Devi confermare la presa visione dell'informativa privacy.");
+
+        var email = request.Email.Trim();
+
+        var user = new ApplicationUser
+        {
+            UserName = email,
+            Email = email,
+            DisplayName = request.DisplayName.Trim(),
+            FirstName = request.FirstName?.Trim(),
+            LastName = request.LastName?.Trim(),
+            PrivacyNoticeAcknowledged = true,
+            PrivacyNoticeAcknowledgedAt = DateTime.UtcNow
+        };
+
+        var result = await userManager.CreateAsync(
+            user, request.Password);
+
+        if (!result.Succeeded)
+            return IdentityErrors(result);
+
+        return StatusCode(StatusCodes.Status201Created);
+    }
+
+    [Authorize]
+    [HttpGet("me")]
+    public async Task<ActionResult<AccountProfileResponse>> GetMe()
+    {
+        var user = await userManager.GetUserAsync(User);
+
+        if (user is null)
+            return Unauthorized();
+
+        return Ok(ToResponse(user));
+    }
+
+    [Authorize]
+    [HttpPut("me")]
+    public async Task<ActionResult<AccountProfileResponse>> UpdateMe(
+        [FromBody] AccountProfileRequest request)
+    {
+        var user = await userManager.GetUserAsync(User);
+
+        if (user is null)
+            return Unauthorized();
+
+        if (string.IsNullOrWhiteSpace(request.DisplayName))
+            return BadRequest("Il nome visualizzato è obbligatorio.");
+
+        user.DisplayName = request.DisplayName.Trim();
+        user.FirstName = request.FirstName?.Trim();
+        user.LastName = request.LastName?.Trim();
+        user.Bio = request.Bio?.Trim();
+        user.UpdatedAt = DateTime.UtcNow;
+
+        var result = await userManager.UpdateAsync(user);
+
+        if (!result.Succeeded)
+            return IdentityErrors(result);
+
+        return Ok(ToResponse(user));
+    }
+
+    private BadRequestObjectResult IdentityErrors(
+        IdentityResult result)
+    {
+        var errors = result.Errors
+            .GroupBy(e => e.Code)
+            .ToDictionary(
+                g => g.Key,
+                g => g.Select(e => e.Description).ToArray());
+
+        return BadRequest(new ValidationProblemDetails(errors)
+        {
+            Status = StatusCodes.Status400BadRequest,
+            Title = "Operazione non riuscita"
+        });
+    }
+
+    private static AccountProfileResponse ToResponse(
+        ApplicationUser user) => new(
+            user.Id,
+            user.Email ?? string.Empty,
+            user.DisplayName,
+            user.FirstName,
+            user.LastName,
+            user.Bio,
+            user.PrivacyNoticeAcknowledged
+        );
+}
