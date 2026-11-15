@@ -1,5 +1,8 @@
 using BookNeighbors.Api.Data;
+using BookNeighbors.Api.Interfaces;
 using BookNeighbors.Api.Models.Identity;
+using BookNeighbors.Api.Services;
+ 
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -25,10 +28,14 @@ builder.Services.AddIdentityCore<ApplicationUser>()
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddApiEndpoints();
 
+builder.Services.AddScoped<ILibraryService, LibraryService>();
+builder.Services.AddScoped<IGeoLocationService, GeoLocationService>();
+
+builder.Services.AddControllers();
 
 var app = builder.Build();
 app.MapIdentityApi<ApplicationUser>();
-
+app.MapControllers();
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {

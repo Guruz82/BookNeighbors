@@ -1,0 +1,21 @@
+using BookNeighbors.Api.Models;
+using BookNeighbors.DTO.Libraries;
+
+namespace BookNeighbors.API.Mappers.LibraryMapper;
+
+public static class LibraryMapper
+{
+    public static LibraryResponse ToResponse(Library library)
+    {
+        return new LibraryResponse(
+            library.Id,
+            library.Name,
+            library.City,
+            library.AreaName,
+            library.Location.Y,
+            library.Location.X,
+            library.LocationConsent,
+            library.IsPublished
+        );
+    }
+}

@@ -47,7 +47,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
                 entity.HasOne(e => e.ApplicationUser)
                     .WithMany()
                     .HasForeignKey(e => e.UserId);
-                entity.HasIndex(e => e.UserId);
+                entity.HasIndex(e => e.UserId)
+                    .IsUnique() ;
                 entity.Property(e => e.UserId)
                     .IsRequired()
                     .HasColumnName("user_id");
