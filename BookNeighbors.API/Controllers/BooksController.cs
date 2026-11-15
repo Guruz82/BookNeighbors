@@ -2,7 +2,7 @@
 using BookNeighbors.Api.Interfaces;
 using BookNeighbors.Api.Models.Identity;
 using BookNeighbors.Api.Models.Results;
-using BookNeighbors.API.Mappers.BookMapper;
+using BookNeighbors.API.Mappers;
 using BookNeighbors.DTO.Books;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;

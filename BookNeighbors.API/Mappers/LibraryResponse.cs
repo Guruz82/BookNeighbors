@@ -1,7 +1,7 @@
 using BookNeighbors.Api.Models;
 using BookNeighbors.DTO.Libraries;
 
-namespace BookNeighbors.API.Mappers.LibraryMapper;
+namespace BookNeighbors.API.Mappers;
 
 public static class LibraryMapper
 {
