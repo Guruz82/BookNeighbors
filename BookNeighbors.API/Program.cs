@@ -30,6 +30,9 @@ builder.Services.AddIdentityCore<ApplicationUser>()
 
 builder.Services.AddScoped<ILibraryService, LibraryService>();
 builder.Services.AddScoped<IGeoLocationService, GeoLocationService>();
+builder.Services.AddScoped<IBookService, BookService>();
+
+
 
 builder.Services.AddControllers();
 
