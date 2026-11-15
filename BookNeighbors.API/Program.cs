@@ -32,8 +32,12 @@ builder.Services.AddScoped<ILibraryService, LibraryService>();
 builder.Services.AddScoped<IGeoLocationService, GeoLocationService>();
 builder.Services.AddScoped<IBookService, BookService>();
 builder.Services.AddScoped<ICategoryService, CategoryService>();
-
-
+builder.Services.AddHttpClient<IIsbnLookupService, IsbnLookupService>(
+    client =>
+    {
+        client.Timeout = TimeSpan.FromSeconds(10);
+    });
+builder.Services.AddScoped<ICoverImageService, CoverImageService>();
 builder.Services.AddControllers();
 
 var app = builder.Build();
@@ -53,7 +57,7 @@ app.UseAuthentication();
 app.UseAuthorization();
  
 app.UseHttpsRedirection();
-
+app.UseStaticFiles();
 var summaries = new[]
 {
     "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"

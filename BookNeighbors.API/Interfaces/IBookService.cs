@@ -12,11 +12,13 @@ public interface IBookService
 
     Task<Book?> CreateBookAsync(Guid userId, BookRequest request);
 
-    Task<Book?> UpdateBookAsync(
-        Guid id, Guid userId, BookRequest request);
-
+    Task<Book?> UpdateBookAsync(Guid id, Guid userId, BookRequest request);
 
     Task<bool> UnpublishBookAsync(Guid id, Guid userId);
 
     Task<DeleteBookResult> DeleteBookAsync(Guid id, Guid userId);
+
+    Task<CoverImageResponse?> UploadCoverAsync(Guid id, Guid userId, IFormFile file, CancellationToken cancellationToken = default);
+
+    Task<bool> DeleteCoverAsync(Guid id, Guid userId);
 }

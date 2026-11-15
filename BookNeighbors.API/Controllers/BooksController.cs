@@ -129,4 +129,47 @@ public class BooksController(
             _ => StatusCode(500)
         };
     }
+
+
+    [HttpPost("{id:guid}/cover")]
+    [Consumes("multipart/form-data")]
+    [RequestSizeLimit(3 * 1024 * 1024)]
+    public async Task<ActionResult<CoverImageResponse>> UploadCover(
+        Guid id,
+        [FromForm] IFormFile? file,
+        CancellationToken cancellationToken)
+    {
+        if (CurrentUserId is not Guid userId)
+            return Unauthorized();
+
+        if (file is null)
+            return BadRequest("Seleziona un'immagine.");
+
+        try
+        {
+            var result = await bookService.UploadCoverAsync(
+                id, userId, file, cancellationToken);
+
+            if (result is null)
+                return NotFound();
+
+            return Ok(result);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+
+    [HttpDelete("{id:guid}/cover")]
+    public async Task<IActionResult> DeleteCover(Guid id)
+    {
+        if (CurrentUserId is not Guid userId)
+            return Unauthorized();
+
+        var deleted = await bookService.DeleteCoverAsync(id, userId);
+
+        return deleted ? NoContent() : NotFound();
+    }
+
 }

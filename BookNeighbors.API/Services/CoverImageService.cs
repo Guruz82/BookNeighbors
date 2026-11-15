@@ -1,153 +1,158 @@
-/*using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Http;
+
+using BookNeighbors.Api.Interfaces;
+using BookNeighbors.DTO.Books;
 using SkiaSharp;
 
-namespace bookneighbors.Services;
+namespace BookNeighbors.Api.Services;
 
-public class CoverImageResult
+public class CoverImageService(IWebHostEnvironment environment)
+    : ICoverImageService
 {
-    public string FileName { get; set; } = string.Empty;
+    private const long MaxFileSize = 2 * 1024 * 1024;
 
-    public string FilePath { get; set; } = string.Empty;
+    private string CoversFolder => Path.Combine(
+        environment.WebRootPath
+            ?? Path.Combine(environment.ContentRootPath, "wwwroot"),
+        "uploads",
+        "covers");
 
-    public string ThumbnailFileName { get; set; } = string.Empty;
-
-    public string ThumbnailFilePath { get; set; } = string.Empty;
-
-    public string ContentType { get; set; } = string.Empty;
-}
-
-public class CoverImageService
-{
-    private readonly IWebHostEnvironment _environment;
-
-    public CoverImageService(IWebHostEnvironment environment)
+    public async Task<CoverImageResponse> SaveCoverAsync(
+        Guid bookId,
+        IFormFile file,
+        CancellationToken cancellationToken = default)
     {
-        _environment = environment;
-    }
+        if (file.Length == 0 || file.Length > MaxFileSize)
+            throw new ArgumentException(
+                "L'immagine deve essere valida e non superare 2 MB.");
 
-    public async Task<CoverImageResult> SaveCoverAsync(IFormFile file)
-    {
-        var allowedContentTypes = new[]
-        {
-            "image/jpeg",
-            "image/png",
-            "image/webp"
-        };
+        if (file.ContentType is not
+            ("image/jpeg" or "image/png" or "image/webp"))
+            throw new ArgumentException(
+                "Formato non valido. Utilizza JPG, PNG o WebP.");
 
-        if (!allowedContentTypes.Contains(file.ContentType))
+        using var stream = file.OpenReadStream();
+        using var codec = SKCodec.Create(stream);
+
+        if (codec is null ||
+            codec.EncodedFormat is not
+                (SKEncodedImageFormat.Jpeg or
+                 SKEncodedImageFormat.Png or
+                 SKEncodedImageFormat.Webp))
+            throw new ArgumentException("Immagine non valida.");
+
+        if (codec.Info.Width > 6000 ||
+            codec.Info.Height > 6000 ||
+            (long)codec.Info.Width * codec.Info.Height > 16000000)
+            throw new ArgumentException("Dimensioni immagine eccessive.");
+
+        using var original = SKBitmap.Decode(codec)
+            ?? throw new ArgumentException("Immagine non leggibile.");
+
+        // Generazione della miniatura
+        const int maxWidth = 220;
+        const int maxHeight = 320;
+
+        var ratio = Math.Min(
+            1.0,
+            Math.Min(
+                (double)maxWidth / original.Width,
+                (double)maxHeight / original.Height));
+
+        var width = Math.Max(1, (int)(original.Width * ratio));
+        var height = Math.Max(1, (int)(original.Height * ratio));
+
+        using var thumbnail = original.Resize(
+            new SKImageInfo(width, height),
+            new SKSamplingOptions(SKFilterMode.Linear))
+            ?? throw new InvalidOperationException(
+                "Errore nella generazione della miniatura.");
+
+        using var fullImage = SKImage.FromBitmap(original);
+        using var thumbnailImage = SKImage.FromBitmap(thumbnail);
+
+        using var fullData = fullImage.Encode(
+            SKEncodedImageFormat.Jpeg, 85);
+
+        using var thumbnailData = thumbnailImage.Encode(
+            SKEncodedImageFormat.Jpeg, 80);
+
+        if (fullData is null || thumbnailData is null)
+            throw new InvalidOperationException(
+                "Errore nella codifica dell'immagine.");
+
+        var directory = Path.Combine(
+            CoversFolder, bookId.ToString("N"));
+
+        Directory.CreateDirectory(directory);
+
+        var name = Guid.NewGuid().ToString("N");
+        var imageName = $"{name}.jpg";
+        var thumbnailName = $"{name}_thumb.jpg";
+
+        var imagePath = Path.Combine(directory, imageName);
+        var thumbnailPath = Path.Combine(directory, thumbnailName);
+
+        try
         {
-            throw new InvalidOperationException("Formato immagine non valido. Usa JPG, PNG o WEBP.");
+            await File.WriteAllBytesAsync(
+                imagePath, fullData.ToArray(), cancellationToken);
+
+            await File.WriteAllBytesAsync(
+                thumbnailPath, thumbnailData.ToArray(), cancellationToken);
+        }
+        catch
+        {
+            File.Delete(imagePath);
+            File.Delete(thumbnailPath);
+            throw;
         }
 
-        const long maxFileSize = 2 * 1024 * 1024;
+        var urlPrefix = $"/uploads/covers/{bookId:N}";
 
-        if (file.Length > maxFileSize)
-        {
-            throw new InvalidOperationException("L'immagine non può superare i 2 MB.");
-        }
-
-        var uploadsFolder = Path.Combine(
-            _environment.WebRootPath,
-            "uploads",
-            "covers"
+        return new CoverImageResponse(
+            $"{urlPrefix}/{imageName}",
+            $"{urlPrefix}/{thumbnailName}"
         );
-
-        var thumbnailsFolder = Path.Combine(
-            _environment.WebRootPath,
-            "uploads",
-            "covers",
-            "thumbs"
-        );
-
-        Directory.CreateDirectory(uploadsFolder);
-        Directory.CreateDirectory(thumbnailsFolder);
-
-        var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
-
-        var fileName = $"{Guid.NewGuid()}{extension}";
-        var thumbnailFileName = $"{Path.GetFileNameWithoutExtension(fileName)}_thumb.jpg";
-
-        var filePath = Path.Combine(uploadsFolder, fileName);
-        var thumbnailPath = Path.Combine(thumbnailsFolder, thumbnailFileName);
-
-        await using (var fileStream = new FileStream(filePath, FileMode.Create))
-        {
-            await file.CopyToAsync(fileStream);
-        }
-
-        CreateThumbnail(filePath, thumbnailPath, maxWidth: 220, maxHeight: 320);
-
-        return new CoverImageResult
-        {
-            FileName = fileName,
-            FilePath = $"/uploads/covers/{fileName}",
-            ThumbnailFileName = thumbnailFileName,
-            ThumbnailFilePath = $"/uploads/covers/thumbs/{thumbnailFileName}",
-            ContentType = file.ContentType
-        };
     }
 
-    public void DeleteCoverFiles(string? filePath, string? thumbnailFilePath)
+    public void DeleteCoverFiles(
+        Guid bookId,
+        string? imageUrl,
+        string? thumbnailUrl)
     {
-        DeletePhysicalFile(filePath);
-        DeletePhysicalFile(thumbnailFilePath);
+        DeleteFile(bookId, imageUrl);
+        DeleteFile(bookId, thumbnailUrl);
     }
 
-    private static void CreateThumbnail(
-        string sourcePath,
-        string destinationPath,
-        int maxWidth,
-        int maxHeight)
+    private void DeleteFile(Guid bookId, string? url)
     {
-        using var inputStream = File.OpenRead(sourcePath);
-        using var original = SKBitmap.Decode(inputStream);
+        var prefix = $"/uploads/covers/{bookId:N}/";
 
-        if (original is null)
-        {
-            throw new InvalidOperationException("Immagine non valida o non leggibile.");
-        }
-
-        var ratioX = (double)maxWidth / original.Width;
-        var ratioY = (double)maxHeight / original.Height;
-        var ratio = Math.Min(ratioX, ratioY);
-
-        var newWidth = Math.Max(1, (int)(original.Width * ratio));
-        var newHeight = Math.Max(1, (int)(original.Height * ratio));
-
-        using var resized = original.Resize(
-            new SKImageInfo(newWidth, newHeight),
-            SKFilterQuality.Medium
-        );
-
-        if (resized is null)
-        {
-            throw new InvalidOperationException("Errore durante la generazione della thumbnail.");
-        }
-
-        using var image = SKImage.FromBitmap(resized);
-        using var data = image.Encode(SKEncodedImageFormat.Jpeg, 85);
-
-        using var outputStream = File.OpenWrite(destinationPath);
-        data.SaveTo(outputStream);
-    }
-
-    private void DeletePhysicalFile(string? filePath)
-    {
-        if (string.IsNullOrWhiteSpace(filePath))
-        {
+        if (url is null ||
+            !url.StartsWith(prefix, StringComparison.Ordinal))
             return;
-        }
 
-        var relativePath = filePath.TrimStart('/')
-            .Replace('/', Path.DirectorySeparatorChar);
+        var fileName = url[prefix.Length..];
 
-        var fullPath = Path.Combine(_environment.WebRootPath, relativePath);
+        // Accetta esclusivamente i nomi generati dal servizio
+        if (!fileName.EndsWith(".jpg", StringComparison.Ordinal))
+            return;
 
-        if (File.Exists(fullPath))
-        {
-            File.Delete(fullPath);
-        }
+        var name = Path.GetFileNameWithoutExtension(fileName);
+
+        if (name.EndsWith("_thumb", StringComparison.Ordinal))
+            name = name[..^6];
+
+        if (!Guid.TryParseExact(name, "N", out _) ||
+            fileName.Contains('/') ||
+            fileName.Contains('\\'))
+            return;
+
+        var path = Path.Combine(
+            CoversFolder,
+            bookId.ToString("N"),
+            fileName);
+
+        File.Delete(path);
     }
 }
-*/

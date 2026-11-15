@@ -9,7 +9,7 @@ using Npgsql;
 
 namespace BookNeighbors.Api.Services;
 
-public class BookService(ApplicationDbContext _dbContext) : IBookService
+public class BookService(ApplicationDbContext _dbContext, ICoverImageService _coverImageService, ILogger<BookService> _logger) : IBookService
 {
     public async Task<List<Book>> GetBooksByUserIdAsync(Guid userId)
     {
@@ -183,4 +183,88 @@ public class BookService(ApplicationDbContext _dbContext) : IBookService
 
         return true;
     }
+
+    public async Task<CoverImageResponse?> UploadCoverAsync(Guid id, Guid userId, IFormFile file, CancellationToken cancellationToken = default)
+    {
+        var book = await _dbContext.Books
+            .FirstOrDefaultAsync(b =>
+                b.Id == id && b.Library.UserId == userId,
+                cancellationToken);
+
+        if (book is null)
+            return null;
+
+        var oldImageUrl = book.ImageUrl;
+        var oldThumbnailUrl = book.ThumbnailUrl;
+
+        var result = await _coverImageService.SaveCoverAsync(
+            book.Id, file, cancellationToken);
+
+        book.ImageUrl = result.ImageUrl;
+        book.ThumbnailUrl = result.ThumbnailUrl;
+        book.UpdatedAt = DateTime.UtcNow;
+
+        try
+        {
+            await _dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch
+        {
+            // Se il DB non salva, eliminiamo i nuovi file
+            _coverImageService.DeleteCoverFiles(
+                book.Id, result.ImageUrl, result.ThumbnailUrl);
+
+            throw;
+        }
+
+        // Eliminiamo la vecchia copertina solo dopo il salvataggio
+        TryDeleteFiles(book.Id, oldImageUrl, oldThumbnailUrl);
+
+        return result;
+    }
+
+    public async Task<bool> DeleteCoverAsync(Guid id, Guid userId)
+    {
+        var book = await _dbContext.Books
+            .FirstOrDefaultAsync(b =>
+                b.Id == id && b.Library.UserId == userId);
+
+        if (book is null)
+            return false;
+
+        var oldImageUrl = book.ImageUrl;
+        var oldThumbnailUrl = book.ThumbnailUrl;
+
+        book.ImageUrl = null;
+        book.ThumbnailUrl = null;
+        book.UpdatedAt = DateTime.UtcNow;
+
+        await _dbContext.SaveChangesAsync();
+
+        TryDeleteFiles(book.Id, oldImageUrl, oldThumbnailUrl);
+
+        return true;
+    }
+
+    private void TryDeleteFiles( Guid bookId, string? imageUrl, string? thumbnailUrl)
+    {
+        try
+        {
+            _coverImageService.DeleteCoverFiles(
+                bookId, imageUrl, thumbnailUrl);
+        }
+        catch (IOException ex)
+        {
+            _logger.LogWarning(
+                ex, "Impossibile eliminare i file del libro {BookId}",
+                bookId);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning(
+                ex, "Accesso negato ai file del libro {BookId}",
+                bookId);
+        }
+    }
+
 }
