@@ -1,25 +1,29 @@
+
 @page "/register"
-@using System.ComponentModel.DataAnnotations
 @using BookNeighbors.Client.Interfaces
 @using BookNeighbors.Client.Models.Identity
- 
 @using Microsoft.AspNetCore.Components.Authorization
- 
+@using BookNeighbors.DTO.Account
+
 @inject IAccountManagement Acct
 
-<PageTitle>Register</PageTitle>
+<PageTitle>Registrazione - Book Neighbors</PageTitle>
 
-<h1>Register</h1>
+<h1>Registrazione</h1>
 
 <AuthorizeView>
     <Authorized Context="authState">
-        <div class="alert alert-success">You're already logged in as @authState.User.Identity?.Name.</div>
+        <div class="alert alert-success">
+            Sei già autenticato come @authState.User.Identity?.Name.
+        </div>
     </Authorized>
+
     <NotAuthorized>
         @if (formResult.Succeeded)
         {
             <div class="alert alert-success">
-                You successfully registered. Now you can <a href="login">login</a>.
+                Registrazione completata.
+                Ora puoi <a href="/login">accedere</a>.
             </div>
         }
         else
@@ -29,103 +33,121 @@
                 <div class="alert alert-danger">@error</div>
             }
 
-            @if (Input is not null)
-            {
-                <div class="row">
-                    <div class="col">
-                        <section>
-                            <EditForm Model="Input" method="post" OnValidSubmit="RegisterUserAsync"
-                            FormName="register" Context="editform_context">
-                                <DataAnnotationsValidator />
-                                <h2>Register as a new user.</h2>
-                                <hr />
-                                <div class="form-floating mb-3">
-                                    <InputText @bind-Value="Input.Email"
-                                    id="Input.Email"
-                                    class="form-control"
-                                    autocomplete="username"
-                                    aria-required="true"
-                                    placeholder="name@example.com" />
-                                    <label for="Input.Email" class="form-label">
-                                        Email
-                                    </label>
-                                    <ValidationMessage For="() => Input.Email"
-                                    class="text-danger" />
-                                </div>
-                                <div class="form-floating mb-3">
-                                    <InputText type="password"
-                                    @bind-Value="Input.Password"
-                                    id="Input.Password"
-                                    class="form-control"
-                                    autocomplete="new-password"
-                                    aria-required="true"
-                                    placeholder="password" />
-                                    <label for="Input.Password" class="form-label">
-                                        Password
-                                    </label>
-                                    <ValidationMessage For="() => Input.Password"
-                                    class="text-danger" />
-                                </div>
-                                <div class="form-floating mb-3">
-                                    <InputText type="password"
-                                    @bind-Value="Input.ConfirmPassword"
-                                    id="Input.ConfirmPassword"
-                                    class="form-control"
-                                    autocomplete="new-password"
-                                    aria-required="true"
-                                    placeholder="confirm password" />
-                                    <label for="Input.ConfirmPassword" class="form-label">
-                                        Confirm Password
-                                    </label>
-                                    <ValidationMessage For="() => Input.ConfirmPassword"
-                                    class="text-danger" />
-                                </div>
-                                <div>
-                                    <button type="submit" class="w-100 btn btn-lg btn-primary">
-                                        Register
-                                    </button>
-                                </div>
-                            </EditForm>
-                        </section>
-                    </div>
+            <EditForm Model="@Input" OnValidSubmit="RegisterUserAsync" FormName="register" Context="editFormContext">>
+
+                <DataAnnotationsValidator />
+
+                <div class="mb-3">
+                    <label for="email">Email</label>
+                    <InputText id="email"
+                               class="form-control"
+                               type="email"
+                               autocomplete="email"
+                               @bind-Value="Input.Email" />
+                    <ValidationMessage For="() => Input.Email" />
                 </div>
-            }
+
+                <div class="mb-3">
+                    <label for="displayName">Nome visualizzato</label>
+                    <InputText id="displayName"
+                               class="form-control"
+                               @bind-Value="Input.DisplayName" />
+                    <ValidationMessage For="() => Input.DisplayName" />
+                </div>
+
+                <div class="mb-3">
+                    <label for="firstName">Nome</label>
+                    <InputText id="firstName"
+                               class="form-control"
+                               @bind-Value="Input.FirstName" />
+                    <ValidationMessage For="() => Input.FirstName" />
+                </div>
+
+                <div class="mb-3">
+                    <label for="lastName">Cognome</label>
+                    <InputText id="lastName"
+                               class="form-control"
+                               @bind-Value="Input.LastName" />
+                    <ValidationMessage For="() => Input.LastName" />
+                </div>
+
+                <div class="mb-3">
+                    <label for="password">Password</label>
+                    <InputText id="password"
+                               type="password"
+                               autocomplete="new-password"
+                               class="form-control"
+                               @bind-Value="Input.Password" />
+                    <ValidationMessage For="() => Input.Password" />
+                </div>
+
+                <div class="mb-3">
+                    <label for="confirmPassword">Conferma password</label>
+                    <input id="confirmPassword"
+                           type="password"
+                           autocomplete="new-password"
+                           class="form-control"
+                           required
+                           @bind="ConfirmPassword" />
+                </div>
+
+                <div class="form-check mb-3">
+                    <InputCheckbox id="privacy"
+                                   class="form-check-input"
+                                   @bind-Value="Input.PrivacyNoticeAcknowledged" />
+
+                    <label for="privacy" class="form-check-label">
+                        Dichiaro di aver preso visione
+                        dell'informativa sulla privacy.
+                    </label>
+
+                    <ValidationMessage
+                        For="() => Input.PrivacyNoticeAcknowledged" />
+                </div>
+
+                <button type="submit"
+                        class="btn btn-primary w-100"
+                        disabled="@isSubmitting">
+                    @(isSubmitting ? "Registrazione..." : "Registrati")
+                </button>
+            </EditForm>
         }
     </NotAuthorized>
 </AuthorizeView>
 
 @code {
+    private RegisterRequest Input = new();
     private FormResult formResult = new();
 
-    [SupplyParameterFromForm]
-    private InputModel? Input { get; set; }
+    private string ConfirmPassword = string.Empty;
+    private bool isSubmitting;
 
-    protected override void OnInitialized() => Input ??= new();
-
-    public async Task RegisterUserAsync()
+    private async Task RegisterUserAsync()
     {
-        if (Input is not null)
+        if (Input.Password != ConfirmPassword)
         {
-            formResult = await Acct.RegisterAsync(Input.Email, Input.Password);
+            formResult = new FormResult
+            {
+                Succeeded = false,
+                ErrorList = ["Le password non coincidono."]
+            };
+
+            return;
         }
-    }
 
-    private sealed class InputModel
-    {
-        [Required]
-        [EmailAddress]
-        [Display(Name = "Email")]
-        public string Email { get; set; } = string.Empty;
+        if (isSubmitting)
+            return;
 
-        [Required]
-        [DataType(DataType.Password)]
-        [Display(Name = "Password")]
-        public string Password { get; set; } = string.Empty;
+        isSubmitting = true;
+        formResult = new FormResult();
 
-        [Required]
-        [DataType(DataType.Password)]
-        [Compare("Password")]
-        [Display(Name = "Confirm Password")]
-        public string ConfirmPassword { get; set; } = string.Empty;
+        try
+        {
+            formResult = await Acct.RegisterAsync(Input);
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
     }
 }

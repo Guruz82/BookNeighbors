@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace BookNeighbors.DTO.Account;
 
-public class AccountRegisterRequest
+public class RegisterRequest
 {
     [Required, EmailAddress]
     public string Email { get; set; } = string.Empty;
@@ -19,5 +19,7 @@ public class AccountRegisterRequest
     [StringLength(100)]
     public string? LastName { get; set; }
 
+    [Range(typeof(bool), "true", "true",
+        ErrorMessage = "Devi confermare la presa visione dell'informativa privacy.")]
     public bool PrivacyNoticeAcknowledged { get; set; }
 }

@@ -1,256 +1,241 @@
+
 using System.Net;
 using System.Net.Http.Json;
 using System.Security.Claims;
-using System.Text;
 using System.Text.Json;
-using Microsoft.AspNetCore.Components.Authorization;
-using BookNeighbors.Client.Models.Identity;
 using BookNeighbors.Client.Interfaces;
+using BookNeighbors.Client.Models.Identity;
+using BookNeighbors.DTO.Account;
+using Microsoft.AspNetCore.Components.Authorization;
 
 namespace BookNeighbors.Client.Providers;
- 
-    /// <summary>
-    /// Handles state for cookie-based auth.
-    /// </summary>
-    /// <remarks>
-    /// Create a new instance of the auth provider.
-    /// </remarks>
-    /// <param name="httpClientFactory">Factory to retrieve auth client.</param>
-    public class CookieAuthenticationStateProvider(IHttpClientFactory httpClientFactory, ILogger<CookieAuthenticationStateProvider> logger)
-        : AuthenticationStateProvider, IAccountManagement
+
+public class CookieAuthenticationStateProvider(
+    IHttpClientFactory httpClientFactory,
+    ILogger<CookieAuthenticationStateProvider> logger)
+    : AuthenticationStateProvider, IAccountManagement
+{
+    private readonly HttpClient httpClient =
+        httpClientFactory.CreateClient("BookNeighborsApi");
+
+    private readonly ClaimsPrincipal unauthenticated =
+        new(new ClaimsIdentity());
+
+    // Registrazione
+    public async Task<FormResult> RegisterAsync(
+        RegisterRequest request)
     {
-        /// <summary>
-        /// Map the JavaScript-formatted properties to C#-formatted classes.
-        /// </summary>
-        private readonly JsonSerializerOptions jsonSerializerOptions =
-            new()
-            {
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            };
-
-        /// <summary>
-        /// Special auth client.
-        /// </summary>
-        private readonly HttpClient httpClient = httpClientFactory.CreateClient("Auth");
-
-        /// <summary>
-        /// Authentication state.
-        /// </summary>
-        private bool authenticated = false;
-
-        /// <summary>
-        /// Default principal for anonymous (not authenticated) users.
-        /// </summary>
-        private readonly ClaimsPrincipal unauthenticated = new(new ClaimsIdentity());
-
-        /// <summary>
-        /// Register a new user.
-        /// </summary>
-        /// <param name="email">The user's email address.</param>
-        /// <param name="password">The user's password.</param>
-        /// <returns>The result serialized to a <see cref="FormResult"/>.
-        /// </returns>
-        public async Task<FormResult> RegisterAsync(string email, string password)
+        try
         {
-            string[] defaultDetail = [ "An unknown error prevented registration from succeeding." ];
+            using var response = await httpClient.PostAsJsonAsync(
+                "api/account/register", request);
 
-            try
+            if (response.IsSuccessStatusCode)
+                return new FormResult { Succeeded = true };
+
+            return new FormResult
             {
-                // make the request
-                var result = await httpClient.PostAsJsonAsync(
-                    "register", new
-                    {
-                        email,
-                        password
-                    });
+                Succeeded = false,
+                ErrorList = await ReadErrorsAsync(response)
+            };
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Errore durante la registrazione");
 
-                // successful?
-                if (result.IsSuccessStatusCode)
+            return new FormResult
+            {
+                Succeeded = false,
+                ErrorList = ["Impossibile completare la registrazione."]
+            };
+        }
+    }
+
+    // Login tramite cookie Identity
+    public async Task<FormResult> LoginAsync(
+        string email,
+        string password)
+    {
+        try
+        {
+            using var response = await httpClient.PostAsJsonAsync(
+                "login?useCookies=true",
+                new
                 {
-                    return new FormResult { Succeeded = true };
-                }
+                    email,
+                    password
+                });
 
-                // body should contain details about why it failed
-                var details = await result.Content.ReadAsStringAsync();
-                var problemDetails = JsonDocument.Parse(details);
-                var errors = new List<string>();
-                var errorList = problemDetails.RootElement.GetProperty("errors");
-
-                foreach (var errorEntry in errorList.EnumerateObject())
-                {
-                    if (errorEntry.Value.ValueKind == JsonValueKind.String)
-                    {
-                        errors.Add(errorEntry.Value.GetString()!);
-                    }
-                    else if (errorEntry.Value.ValueKind == JsonValueKind.Array)
-                    {
-                        errors.AddRange(
-                            errorEntry.Value.EnumerateArray().Select(
-                                e => e.GetString() ?? string.Empty)
-                            .Where(e => !string.IsNullOrEmpty(e)));
-                    }
-                }
-
-                // return the error list
+            if (!response.IsSuccessStatusCode)
+            {
                 return new FormResult
                 {
                     Succeeded = false,
-                    ErrorList = problemDetails == null ? defaultDetail : [.. errors]
+                    ErrorList = ["Email o password non validi."]
                 };
             }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "App error");
-            }
 
-            // unknown error
+            NotifyAuthenticationStateChanged(
+                GetAuthenticationStateAsync());
+
+            return new FormResult { Succeeded = true };
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Errore durante il login");
+
             return new FormResult
             {
                 Succeeded = false,
-                ErrorList = defaultDetail
+                ErrorList = ["Impossibile effettuare il login."]
             };
         }
+    }
 
-        /// <summary>
-        /// User login.
-        /// </summary>
-        /// <param name="email">The user's email address.</param>
-        /// <param name="password">The user's password.</param>
-        /// <returns>The result of the login request serialized to a <see cref="FormResult"/>.</returns>
-        public async Task<FormResult> LoginAsync(string email, string password)
+    // Recupero dello stato di autenticazione
+    public override async Task<AuthenticationState>
+        GetAuthenticationStateAsync()
+    {
+        try
         {
-            try
-            {
-                // login with cookies
-                var result = await httpClient.PostAsJsonAsync(
-                    "login?useCookies=true", new
-                    {
-                        email,
-                        password
-                    });
+            using var response =
+                await httpClient.GetAsync("manage/info");
 
-                // success?
-                if (result.IsSuccessStatusCode)
-                {
-                    // need to refresh auth state
-                    NotifyAuthenticationStateChanged(GetAuthenticationStateAsync());
+            if (response.StatusCode == HttpStatusCode.Unauthorized)
+                return new AuthenticationState(unauthenticated);
 
-                    // success!
-                    return new FormResult { Succeeded = true };
-                }
-            }
-            catch (Exception ex)
+            if (!response.IsSuccessStatusCode)
             {
-                logger.LogError(ex, "App error");
+                logger.LogWarning(
+                    "Verifica autenticazione fallita: {StatusCode}",
+                    response.StatusCode);
+
+                return new AuthenticationState(unauthenticated);
             }
 
-            // unknown error
-            return new FormResult
+            var userInfo =
+                await response.Content.ReadFromJsonAsync<UserInfo>();
+
+            if (userInfo is null ||
+                string.IsNullOrWhiteSpace(userInfo.Email))
             {
-                Succeeded = false,
-                ErrorList = [ "Invalid email and/or password." ]
+                return new AuthenticationState(unauthenticated);
+            }
+
+            var claims = new List<Claim>
+            {
+                new(ClaimTypes.Name, userInfo.Email),
+                new(ClaimTypes.Email, userInfo.Email)
             };
+
+            var identity = new ClaimsIdentity(
+                claims,
+                nameof(CookieAuthenticationStateProvider));
+
+            return new AuthenticationState(
+                new ClaimsPrincipal(identity));
         }
-
-        /// <summary>
-        /// Get authentication state.
-        /// </summary>
-        /// <remarks>
-        /// Called by Blazor anytime and authentication-based decision needs to be made, then cached
-        /// until the changed state notification is raised.
-        /// </remarks>
-        /// <returns>The authentication state asynchronous request.</returns>
-        public override async Task<AuthenticationState> GetAuthenticationStateAsync()
+        catch (Exception ex)
         {
-            authenticated = false;
+            logger.LogError(
+                ex,
+                "Errore durante il recupero dello stato di autenticazione");
 
-            // default to not authenticated
-            var user = unauthenticated;
+            return new AuthenticationState(unauthenticated);
+        }
+    }
 
-            try
+    // Logout
+    public async Task LogoutAsync()
+    {
+        using var response = await httpClient.PostAsJsonAsync(
+            "logout", new { });
+
+        response.EnsureSuccessStatusCode();
+
+        NotifyAuthenticationStateChanged(
+            Task.FromResult(
+                new AuthenticationState(unauthenticated)));
+    }
+
+    // Verifica autenticazione
+    public async Task<bool> CheckAuthenticatedAsync()
+    {
+        var state = await GetAuthenticationStateAsync();
+
+        return state.User.Identity?.IsAuthenticated == true;
+    }
+
+    // Lettura errori restituiti dalle API
+    private static async Task<string[]> ReadErrorsAsync(
+        HttpResponseMessage response)
+    {
+        var content = await response.Content.ReadAsStringAsync();
+
+        if (string.IsNullOrWhiteSpace(content))
+            return ["Operazione non riuscita."];
+
+        try
+        {
+            using var document = JsonDocument.Parse(content);
+            var root = document.RootElement;
+
+            if (root.ValueKind == JsonValueKind.String)
+                return [root.GetString() ?? "Operazione non riuscita."];
+
+            if (root.ValueKind != JsonValueKind.Object)
+                return ["Operazione non riuscita."];
+
+            var errors = new List<string>();
+
+            if (root.TryGetProperty("errors", out var errorList) &&
+                errorList.ValueKind == JsonValueKind.Object)
             {
-                // the user info endpoint is secured, so if the user isn't logged in this will fail
-                using var userResponse = await httpClient.GetAsync("manage/info");
-
-                // throw if user info wasn't retrieved
-                userResponse.EnsureSuccessStatusCode();
-
-                // user is authenticated,so let's build their authenticated identity
-                var userJson = await userResponse.Content.ReadAsStringAsync();
-                var userInfo = JsonSerializer.Deserialize<UserInfo>(userJson, jsonSerializerOptions);
-
-                if (userInfo != null)
+                foreach (var error in errorList.EnumerateObject())
                 {
-                    // in this example app, name and email are the same
-                    var claims = new List<Claim>
+                    if (error.Value.ValueKind == JsonValueKind.Array)
                     {
-                        new(ClaimTypes.Name, userInfo.Email),
-                        new(ClaimTypes.Email, userInfo.Email),
-                    };
-
-                    // add any additional claims
-                    claims.AddRange(
-                        userInfo.Claims.Where(c => c.Key != ClaimTypes.Name && c.Key != ClaimTypes.Email)
-                            .Select(c => new Claim(c.Key, c.Value)));
-
-                    // request the roles endpoint for the user's roles
-                    using var rolesResponse = await httpClient.GetAsync("roles");
-
-                    // throw if request fails
-                    rolesResponse.EnsureSuccessStatusCode();
-
-                    // read the response into a string
-                    var rolesJson = await rolesResponse.Content.ReadAsStringAsync();
-
-                    // deserialize the roles string into an array
-                    var roles = JsonSerializer.Deserialize<RoleClaim[]>(rolesJson, jsonSerializerOptions);
-
-                    // add any roles to the claims collection
-                    if (roles?.Length > 0)
-                    {
-                        foreach (var role in roles)
+                        foreach (var item in error.Value.EnumerateArray())
                         {
-                            if (!string.IsNullOrEmpty(role.Type) && !string.IsNullOrEmpty(role.Value))
+                            if (item.ValueKind == JsonValueKind.String)
                             {
-                                claims.Add(new Claim(role.Type, role.Value, role.ValueType, role.Issuer, role.OriginalIssuer));
+                                var message = item.GetString();
+
+                                if (!string.IsNullOrWhiteSpace(message))
+                                    errors.Add(message);
                             }
                         }
                     }
+                    else if (error.Value.ValueKind == JsonValueKind.String)
+                    {
+                        var message = error.Value.GetString();
 
-                    // set the principal
-                    var id = new ClaimsIdentity(claims, nameof(CookieAuthenticationStateProvider));
-                    user = new ClaimsPrincipal(id);
-                    authenticated = true;
+                        if (!string.IsNullOrWhiteSpace(message))
+                            errors.Add(message);
+                    }
                 }
             }
-            catch (Exception ex) when (ex is HttpRequestException exception)
+
+            if (errors.Count > 0)
+                return errors.ToArray();
+
+            if (root.TryGetProperty("detail", out var detail) &&
+                detail.ValueKind == JsonValueKind.String)
             {
-                if (exception.StatusCode != HttpStatusCode.Unauthorized)
-                {
-                    logger.LogError(ex, "App error");
-                }
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "App error");
+                return [detail.GetString() ?? "Operazione non riuscita."];
             }
 
-            // return the state
-            return new AuthenticationState(user);
+            if (root.TryGetProperty("title", out var title) &&
+                title.ValueKind == JsonValueKind.String)
+            {
+                return [title.GetString() ?? "Operazione non riuscita."];
+            }
+        }
+        catch (JsonException)
+        {
+            return [content];
         }
 
-        public async Task LogoutAsync()
-        {
-            const string Empty = "{}";
-            var emptyContent = new StringContent(Empty, Encoding.UTF8, "application/json");
-            await httpClient.PostAsync("logout", emptyContent);
-            NotifyAuthenticationStateChanged(GetAuthenticationStateAsync());
-        }
-
-        public async Task<bool> CheckAuthenticatedAsync()
-        {
-            await GetAuthenticationStateAsync();
-            return authenticated;
-        }
+        return ["Operazione non riuscita."];
     }
- 
+}

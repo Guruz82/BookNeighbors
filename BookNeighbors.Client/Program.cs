@@ -15,17 +15,17 @@ builder.RootComponents.Add<HeadOutlet>("head::after");
 builder.Services.AddTransient<CookieHandler>();
 // set up authorization
 builder.Services.AddAuthorizationCore();
+builder.Services.AddCascadingAuthenticationState();
 
 // register the custom state provider
 builder.Services.AddScoped<AuthenticationStateProvider, CookieAuthenticationStateProvider>();
 // register the account management interface
-builder.Services.AddScoped(
-    sp => (IAccountManagement)sp.GetRequiredService<AuthenticationStateProvider>());
+builder.Services.AddScoped<IAccountManagement>(sp => (IAccountManagement)sp.GetRequiredService<AuthenticationStateProvider>());
  
 builder.Services.AddHttpClient("BookNeighborsApi", client =>
 {
     client.BaseAddress = new Uri("https://localhost:5272/");
-});
+}).AddHttpMessageHandler<CookieHandler>();
 
 builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
 

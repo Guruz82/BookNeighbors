@@ -15,7 +15,7 @@ public class AccountController(
     [AllowAnonymous]
     [HttpPost("register")]
     public async Task<IActionResult> Register(
-        [FromBody] AccountRegisterRequest request)
+        [FromBody] RegisterRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.DisplayName))
             return BadRequest("Il nome visualizzato è obbligatorio.");
