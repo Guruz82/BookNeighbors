@@ -53,9 +53,9 @@ public class SearchService(
             {
                 Book = b,
                 Library = b.Library,
-                DistanceMeters = b.Library.Location.Distance(point)
+                DistanceMeters = b.Library.Location.Distance(point),
 
-                 IsOnLoan = db.LoanRequests.Any(l =>
+                 IsLoaned = db.LoanRequests.Any(l =>
             l.BookId == b.Id &&
             l.Status.Name == "Accepted")
             })
