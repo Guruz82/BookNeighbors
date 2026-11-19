@@ -33,7 +33,7 @@
                 <div class="alert alert-danger">@error</div>
             }
 
-            <EditForm Model="@Input" OnValidSubmit="RegisterUserAsync" FormName="register" Context="editFormContext">>
+            <EditForm Model="@Input" OnValidSubmit="RegisterUserAsync" FormName="register" Context="editFormContext">
 
                 <DataAnnotationsValidator />
 
@@ -98,11 +98,10 @@
 
                     <label for="privacy" class="form-check-label">
                         Dichiaro di aver preso visione
-                        dell'informativa sulla privacy.
+                        dell'<a href="/privacy" target="_blank"
+                                rel="noopener noreferrer">informativa privacy</a>.
                     </label>
-
-                    <ValidationMessage
-                        For="() => Input.PrivacyNoticeAcknowledged" />
+                <ValidationMessage For="() => Input.PrivacyNoticeAcknowledged" />
                 </div>
 
                 <button type="submit"

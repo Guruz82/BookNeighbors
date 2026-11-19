@@ -21,4 +21,8 @@
     <PackageReference Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="4.153.1" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\BookNeighbors.Common\BookNeighbors.Common.csproj" />
+  </ItemGroup>
+
 </Project>

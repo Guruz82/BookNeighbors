@@ -1,0 +1,220 @@
+
+@page "/mia-libreria"
+@using System.Net
+@using BookNeighbors.DTO.Libraries
+@using BookNeighbors.Client.Services
+@using BookNeighbors.Client.Components
+@inject LibraryClientService LibraryApi
+
+<PageTitle>La mia libreria - Book Neighbors</PageTitle>
+
+<h1>La mia libreria</h1>
+
+@if (isLoading)
+{
+    <p>Caricamento...</p>
+}
+else if (unauthorized)
+{
+    <div class="alert alert-warning">
+        Devi effettuare il <a href="/login">login</a>
+        per gestire la tua libreria.
+    </div>
+}
+else if (loadFailed)
+{
+    <div class="alert alert-danger">
+        Impossibile caricare la libreria.
+    </div>
+}
+else
+{
+    <p>
+        @(exists
+            ? "Modifica i dati della tua libreria."
+            : "Crea la tua libreria personale.")
+    </p>
+
+    @if (saved)
+    {
+        <div class="alert alert-success">
+            Libreria salvata correttamente.
+        </div>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(error))
+    {
+        <div class="alert alert-danger">@error</div>
+    }
+
+    <EditForm Model="@Input"
+              OnValidSubmit="SaveLibraryAsync"
+              Context="libraryFormContext">
+
+        <DataAnnotationsValidator />
+
+        <div class="mb-3">
+            <label class="form-label">Nome libreria</label>
+            <InputText class="form-control"
+                       @bind-Value="Input.Name" />
+            <ValidationMessage For="() => Input.Name" />
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Città</label>
+            <InputText class="form-control"
+                       @bind-Value="Input.City" />
+            <ValidationMessage For="() => Input.City" />
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Zona</label>
+            <InputText class="form-control"
+                       @bind-Value="Input.AreaName" />
+            <ValidationMessage For="() => Input.AreaName" />
+        </div>
+
+        <div class="mb-3">
+    <label class="form-label">Posizione della libreria</label>
+
+    <LocationMap Latitude="Input.Latitude"
+                 Longitude="Input.Longitude"
+                 OnLocationChanged="SetLibraryPosition"
+                 Height="380px" />
+
+    <div class="form-text">
+        Clicca sulla mappa o trascina l'indicatore
+        per scegliere la posizione approssimativa.
+    </div>
+
+    <ValidationMessage For="() => Input.Latitude" />
+    <ValidationMessage For="() => Input.Longitude" />
+</div>
+
+        <div class="form-check mb-3">
+            <InputCheckbox class="form-check-input"
+                           id="locationConsent"
+                           @bind-Value="Input.LocationConsent" />
+
+            <label class="form-check-label"
+                   for="locationConsent">
+                Autorizzo l'utilizzo della posizione
+                approssimativa per rendere visibile
+                la mia libreria.
+            </label>
+        </div>
+
+        <div class="form-check mb-3">
+            <InputCheckbox class="form-check-input"
+                           id="isPublished"
+                           @bind-Value="Input.IsPublished" />
+
+            <label class="form-check-label"
+                   for="isPublished">
+                Rendi pubblica la libreria
+            </label>
+        </div>
+
+        <button type="submit"
+                class="btn btn-primary"
+                disabled="@isSaving">
+            @(isSaving ? "Salvataggio..." : "Salva libreria")
+        </button>
+    </EditForm>
+}
+
+@code {
+    private LibraryRequest Input = new();
+
+    private bool isLoading = true;
+    private bool loadFailed;
+    private bool unauthorized;
+    private bool exists;
+    private bool isSaving;
+    private bool saved;
+
+    private string? error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var library = await LibraryApi.GetMineAsync();
+
+            if (library is not null)
+            {
+                exists = true;
+
+                Input = new LibraryRequest
+                {
+                    Name = library.Name,
+                    City = library.City,
+                    AreaName = library.AreaName,
+                    Latitude = library.Latitude,
+                    Longitude = library.Longitude,
+                    LocationConsent = library.LocationConsent,
+                    IsPublished = library.IsPublished
+                };
+            }
+        }
+        catch (HttpRequestException ex)
+            when (ex.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            unauthorized = true;
+        }
+        catch (Exception)
+        {
+            loadFailed = true;
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task SaveLibraryAsync()
+    {
+        if (isSaving)
+            return;
+
+        saved = false;
+        error = null;
+
+        if (Input.IsPublished && !Input.LocationConsent)
+        {
+            error = "Per pubblicare la libreria devi autorizzare "
+                  + "l'utilizzo della posizione.";
+            return;
+        }
+
+        isSaving = true;
+
+        try
+        {
+            await LibraryApi.SaveAsync(Input, exists);
+
+            exists = true;
+            saved = true;
+        }
+        catch (HttpRequestException ex)
+            when (ex.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            unauthorized = true;
+        }
+        catch (Exception ex)
+        {
+            error = $"Impossibile salvare la libreria: {ex.Message}";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private void SetLibraryPosition(
+    (double Latitude, double Longitude) position)
+    {
+        Input.Latitude = Math.Round(position.Latitude, 3);
+        Input.Longitude = Math.Round(position.Longitude, 3);
+    }
+}

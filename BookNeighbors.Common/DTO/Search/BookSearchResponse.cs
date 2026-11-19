@@ -10,5 +10,6 @@ public record BookSearchResponse(
     string? ThumbnailUrl,
     double Latitude,
     double Longitude,
-    double DistanceKm
+    double DistanceKm,
+    bool IsLoaned
 );

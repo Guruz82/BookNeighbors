@@ -54,6 +54,10 @@ public class SearchService(
                 Book = b,
                 Library = b.Library,
                 DistanceMeters = b.Library.Location.Distance(point)
+
+                 IsOnLoan = db.LoanRequests.Any(l =>
+            l.BookId == b.Id &&
+            l.Status.Name == "Accepted")
             })
             .ToListAsync();
 
@@ -67,7 +71,8 @@ public class SearchService(
             x.Book.ThumbnailUrl,
             x.Library.Location.Y,
             x.Library.Location.X,
-            Math.Round(x.DistanceMeters / 1000, 2)
+            Math.Round(x.DistanceMeters / 1000, 2),
+            x.IsLoaned
         )).ToList();
     }
 }

@@ -84,60 +84,59 @@ public class IsbnLookupService(
         );
     }
 
-    private async Task<IsbnLookupResponse?> TryOpenLibraryAsync(
-        string isbn, CancellationToken ct)
+    
+private async Task<IsbnLookupResponse?> TryOpenLibraryAsync(
+    string isbn, CancellationToken ct)
+{
+    var url =
+        $"https://openlibrary.org/api/books?bibkeys=ISBN:{isbn}&jscmd=data&format=json";
+
+    using var document = await GetJsonAsync(url, ct);
+
+    if (document is null)
+        return null;
+
+    var root = document.RootElement;
+
+    if (root.ValueKind != JsonValueKind.Object ||
+        !root.TryGetProperty($"ISBN:{isbn}", out var data) ||
+        data.ValueKind != JsonValueKind.Object)
     {
-        var url =
-            $"https://openlibrary.org/api/volumes/brief/isbn/{isbn}.json";
-
-        using var document = await GetJsonAsync(url, ct);
-
-        if (document is null)
-            return null;
-
-        var root = document.RootElement;
-
-        if (!root.TryGetProperty("records", out var records) ||
-            records.ValueKind != JsonValueKind.Object)
-            return null;
-
-        foreach (var record in records.EnumerateObject())
-        {
-            if (!record.Value.TryGetProperty("data", out var data))
-                continue;
-
-            var title = GetString(data, "title");
-
-            if (string.IsNullOrWhiteSpace(title))
-                continue;
-
-            string? thumbnail = null;
-
-            if (data.TryGetProperty("cover", out var cover))
-            {
-                thumbnail = GetString(cover, "medium")
-                    ?? GetString(cover, "large")
-                    ?? GetString(cover, "small");
-            }
-
-            return new IsbnLookupResponse(
-                Found: true,
-                Title: title,
-                Author: GetAuthors(data),
-                Publisher: GetNames(data, "publishers"),
-                PublicationYear: ExtractYear(
-                    GetString(data, "publish_date")),
-                Description: GetDescription(data),
-                ThumbnailUrl: thumbnail,
-                Message: "Dati recuperati da Open Library."
-            );
-        }
+        logger.LogInformation(
+            "Open Library: nessun risultato per ISBN {ISBN}", isbn);
 
         return null;
     }
 
-    private async Task<JsonDocument?> GetJsonAsync(
-        string url, CancellationToken ct)
+    var title = GetString(data, "title");
+
+    if (string.IsNullOrWhiteSpace(title))
+        return null;
+
+    string? thumbnail = null;
+
+    if (data.TryGetProperty("cover", out var cover))
+    {
+        thumbnail = GetString(cover, "medium")
+            ?? GetString(cover, "large")
+            ?? GetString(cover, "small");
+    }
+
+    return new IsbnLookupResponse(
+        Found: true,
+        Title: title,
+        Author: GetNames(data, "authors"),
+        Publisher: GetNames(data, "publishers"),
+        PublicationYear: ExtractYear(
+            GetString(data, "publish_date")),
+        Description: GetDescription(data),
+        ThumbnailUrl: thumbnail,
+        Message: "Dati recuperati da Open Library."
+    );
+}
+
+
+    private async Task<JsonDocument?> GetJsonAsync(string url, CancellationToken ct)
     {
         try
         {

@@ -9,6 +9,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "TestAuth", "TestAuth", "{45
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BookNeighbors.Client", "BookNeighbors.Client\BookNeighbors.Client.csproj", "{E0D685CF-2533-4111-BCA0-4DE28041CB7B}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BookNeighbors.Common", "BookNeighbors.Common\BookNeighbors.Common.csproj", "{E6215D30-0B2E-40A4-AF57-622DCCE2A456}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -43,6 +45,18 @@ Global
 		{E0D685CF-2533-4111-BCA0-4DE28041CB7B}.Release|x64.Build.0 = Release|Any CPU
 		{E0D685CF-2533-4111-BCA0-4DE28041CB7B}.Release|x86.ActiveCfg = Release|Any CPU
 		{E0D685CF-2533-4111-BCA0-4DE28041CB7B}.Release|x86.Build.0 = Release|Any CPU
+		{E6215D30-0B2E-40A4-AF57-622DCCE2A456}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E6215D30-0B2E-40A4-AF57-622DCCE2A456}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E6215D30-0B2E-40A4-AF57-622DCCE2A456}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{E6215D30-0B2E-40A4-AF57-622DCCE2A456}.Debug|x64.Build.0 = Debug|Any CPU
+		{E6215D30-0B2E-40A4-AF57-622DCCE2A456}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{E6215D30-0B2E-40A4-AF57-622DCCE2A456}.Debug|x86.Build.0 = Debug|Any CPU
+		{E6215D30-0B2E-40A4-AF57-622DCCE2A456}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E6215D30-0B2E-40A4-AF57-622DCCE2A456}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E6215D30-0B2E-40A4-AF57-622DCCE2A456}.Release|x64.ActiveCfg = Release|Any CPU
+		{E6215D30-0B2E-40A4-AF57-622DCCE2A456}.Release|x64.Build.0 = Release|Any CPU
+		{E6215D30-0B2E-40A4-AF57-622DCCE2A456}.Release|x86.ActiveCfg = Release|Any CPU
+		{E6215D30-0B2E-40A4-AF57-622DCCE2A456}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

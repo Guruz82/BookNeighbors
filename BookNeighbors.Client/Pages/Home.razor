@@ -1,7 +1,301 @@
-﻿@page "/"
+﻿
+@page "/"
+@using BookNeighbors.Client.Components
+@using BookNeighbors.Client.Models.Maps
+@using BookNeighbors.Client.Services
+@using BookNeighbors.Client.Interfaces
+@using BookNeighbors.DTO.Search
+@using BookNeighbors.DTO.Categories
+@inject ILoanClientService LoansApi
+@inject SearchClientService SearchApi
 
-<PageTitle>Home</PageTitle>
+<PageTitle>Cerca libri - Book Neighbors</PageTitle>
 
-<h1>Hello, world!</h1>
+<h1>Cerca libri vicino a te</h1>
 
-Welcome to your new app.
+<p>
+    Scegli una posizione sulla mappa e cerca
+    i libri disponibili nelle vicinanze.
+</p>
+
+<div class="row g-4">
+
+    <div class="col-lg-4">
+        <EditForm Model="@search" OnValidSubmit="SearchBooksAsync">
+
+            <DataAnnotationsValidator />
+
+            <div class="mb-3">
+                <label class="form-label">
+                    Titolo, autore o ISBN
+                </label>
+
+                <InputText class="form-control"
+                           maxlength="100"
+                           placeholder="Cerca un libro..."
+                           @bind-Value="search.Text" />
+
+                <ValidationMessage For="() => search.Text" />
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Categoria</label>
+
+                <InputSelect class="form-select"
+                             @bind-Value="search.CategoryId">
+
+                    <option value="">Tutte le categorie</option>
+
+                    @foreach (var category in categories)
+                    {
+                        <option value="@category.Id">
+                            @category.Name
+                        </option>
+                    }
+
+                </InputSelect>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">
+                    Raggio di ricerca (km)
+                </label>
+
+                <InputNumber class="form-control"
+                             min="1"
+                             max="100"
+                             step="1"
+                             @bind-Value="search.RadiusKm" />
+
+                <ValidationMessage For="() => search.RadiusKm" />
+            </div>
+
+            <button type="submit"
+                    class="btn btn-primary w-100"
+                    disabled="@isSearching">
+
+                @(isSearching ? "Ricerca..." : "Cerca libri")
+            </button>
+
+        </EditForm>
+
+        @if (!string.IsNullOrWhiteSpace(categoryError))
+        {
+            <p class="text-warning mt-3">
+                @categoryError
+            </p>
+        }
+    </div>
+
+    <div class="col-lg-8">
+        <LocationMap Latitude="search.Latitude"
+                     Longitude="search.Longitude"
+                     RadiusKm="search.RadiusKm"
+                     Markers="markers"
+                     OnLocationChanged="SetSearchPosition"
+                     Height="450px" />
+
+        <div class="form-text mt-2">
+            Clicca sulla mappa per spostare il centro
+            della ricerca. Il cerchio indica il raggio selezionato.
+        </div>
+    </div>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(error))
+{
+    <div class="alert alert-danger mt-4">
+        @error
+    </div>
+}
+
+@if (hasSearched)
+{
+    @if (!string.IsNullOrWhiteSpace(loanMessage))
+    {
+        <div class="alert alert-success">@loanMessage</div>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(loanError))
+    {
+        <div class="alert alert-danger">@loanError</div>
+    }
+    <h2 class="mt-4">
+        Risultati della ricerca (@results.Count)
+    </h2>
+
+    @if (results.Count == 0)
+    {
+        <div class="alert alert-info">
+            Nessun libro trovato.
+            Prova ad aumentare il raggio o modificare i filtri.
+        </div>
+    }
+    else
+    {
+        <div class="row g-3">
+            @foreach (var book in results)
+            {
+                <div class="col-md-6">
+                    <div class="card h-100">
+                        <div class="card-body">
+
+                            <h5 class="card-title">
+                                @book.Title
+                            </h5>
+
+                            <p class="card-text">
+                                <strong>Autore:</strong>
+                                @book.Author
+                            </p>
+
+                            <p class="card-text">
+                                <strong>Libreria:</strong>
+                                @book.LibraryName
+                            </p>
+
+                            @if (!string.IsNullOrWhiteSpace(book.City))
+                            {
+                                <p class="card-text">
+                                    <strong>Città:</strong>
+                                    @book.City
+                                </p>
+                            }
+
+                            <p class="card-text">
+                                <strong>Distanza:</strong>
+                                @book.DistanceKm.ToString("0.00") km
+                            </p>
+
+                            @if (book.IsLoaned)
+                                {
+                                    <span class="badge bg-warning text-dark">
+                                        In prestito
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-success">
+                                        Disponibile
+                                    </span>
+                                }
+                            <button class="btn btn-outline-primary"
+                                disabled="@(book.IsLoaned || isRequesting)"
+                                @onclick="() => RequestLoanAsync(book.Id)">
+                            @(book.IsLoaned ? "Non disponibile" : "Richiedi in prestito")
+                        </button>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+}
+
+@code {
+    private BookSearchRequest search = new()
+    {
+        Latitude = 45.464,
+        Longitude = 9.190,
+        RadiusKm = 10
+    };
+
+ 
+    private List<BookSearchResponse> results = [];
+    private List<CategoryResponse> categories = [];
+    private IReadOnlyList<MapMarker> markers = [];
+
+    private bool isSearching;
+    private bool hasSearched;
+   private bool isRequesting;
+    private string? loanMessage;
+    private string? loanError;
+    private string? error;
+    private string? categoryError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            categories = await SearchApi.GetCategoriesAsync();
+        }
+        catch (Exception)
+        {
+            categoryError =
+                "Impossibile caricare le categorie.";
+        }
+    }
+
+    private void SetSearchPosition(
+        (double Latitude, double Longitude) position)
+    {
+        search.Latitude = Math.Round(position.Latitude, 3);
+        search.Longitude = Math.Round(position.Longitude, 3);
+    }
+
+    private async Task SearchBooksAsync()
+    {
+        if (isSearching)
+            return;
+
+        isSearching = true;
+        error = null;
+        hasSearched = false;
+
+        try
+        {
+            results = await SearchApi.SearchBooksAsync(search);
+
+            markers = results
+                .GroupBy(b => b.LibraryId)
+                .Select(group => new MapMarker(
+                    group.First().Latitude,
+                    group.First().Longitude,
+                    group.First().LibraryName,
+                    group.Count() == 1
+                        ? "1 libro"
+                        : $"{group.Count()} libri"
+                ))
+                .ToList();
+
+            hasSearched = true;
+        }
+        catch (Exception)
+        {
+            results = [];
+            markers = [];
+            error = "Errore durante la ricerca dei libri.";
+        }
+        finally
+        {
+            isSearching = false;
+        }
+    }
+
+
+
+private async Task RequestLoanAsync(Guid bookId)
+{
+    if (isRequesting)
+        return;
+
+    isRequesting = true;
+    loanMessage = null;
+    loanError = null;
+
+    try
+    {
+        await LoansApi.RequestAsync(bookId);
+
+        loanMessage = "Richiesta di prestito inviata correttamente.";
+    }
+    catch (Exception ex)
+    {
+        loanError = ex.Message;
+    }
+    finally
+    {
+        isRequesting = false;
+    }
+}
+}

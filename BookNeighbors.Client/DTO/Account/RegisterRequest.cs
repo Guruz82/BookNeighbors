@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace BookNeighbors.DTO.Account;
 
-public class RegisterRequest
+public class RegisterRequestssssss
 {
     [Required, EmailAddress]
     public string Email { get; set; } = string.Empty;

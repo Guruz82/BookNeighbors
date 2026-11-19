@@ -1,0 +1,524 @@
+
+@page "/miei-libri"
+
+@using BookNeighbors.Client.Services
+@using BookNeighbors.DTO.Books
+@using BookNeighbors.DTO.Categories
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.JSInterop
+
+@inject BookClientService BooksApi
+@inject IJSRuntime JS
+
+<PageTitle>I miei libri - Book Neighbors</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1>I miei libri</h1>
+
+    <button class="btn btn-primary"
+            @onclick="NewBook">
+        Nuovo libro
+    </button>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(message))
+{
+    <div class="alert alert-success">@message</div>
+}
+
+@if (!string.IsNullOrWhiteSpace(error))
+{
+    <div class="alert alert-danger">@error</div>
+}
+
+@if (isLoading)
+{
+    <p>Caricamento libri...</p>
+}
+else
+{
+    @if (showEditor)
+    {
+        <div class="card mb-4">
+            <div class="card-body">
+
+                <h2>
+                    @(editingId.HasValue
+                        ? "Modifica libro"
+                        : "Nuovo libro")
+                </h2>
+
+                <EditForm Model="@Input"
+                          OnValidSubmit="SaveBookAsync"
+                          Context="bookFormContext">
+
+                    <DataAnnotationsValidator />
+
+                    <div class="mb-3">
+                        <label class="form-label">ISBN</label>
+
+                        <div class="input-group">
+                            <InputText class="form-control"
+                                       @bind-Value="Input.ISBN" />
+
+                            <button type="button"
+                                    class="btn btn-outline-secondary"
+                                    disabled="@isLookingUp"
+                                    @onclick="LookupIsbnAsync">
+                                @(isLookingUp ? "Ricerca..." : "Cerca ISBN")
+                            </button>
+                        </div>
+
+                        <ValidationMessage For="() => Input.ISBN" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Titolo</label>
+
+                        <InputText class="form-control"
+                                   @bind-Value="Input.Title" />
+
+                        <ValidationMessage For="() => Input.Title" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Autore</label>
+
+                        <InputText class="form-control"
+                                   @bind-Value="Input.Author" />
+
+                        <ValidationMessage For="() => Input.Author" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Anno di pubblicazione</label>
+
+                        <InputNumber class="form-control"
+                                     @bind-Value="Input.PublicationYear" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Descrizione</label>
+
+                        <InputTextArea class="form-control"
+                                       rows="4"
+                                       @bind-Value="Input.Description" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Categorie</label>
+
+                        <div class="border rounded p-3"
+                             style="max-height:220px;overflow-y:auto;">
+
+                            @foreach (var category in categories)
+                            {
+                                <div class="form-check" @key="category.Id">
+                                    <input class="form-check-input"
+                                           type="checkbox"
+                                           id="@($"cat-{category.Id}")"
+                                           checked="@Input.CategoryIds.Contains(category.Id)"
+                                           @onchange="e => SetCategory(
+                                               category.Id,
+                                               e.Value is bool selected && selected)" />
+
+                                    <label class="form-check-label"
+                                           for="@($"cat-{category.Id}")">
+                                        @category.Name
+                                    </label>
+                                </div>
+                            }
+                        </div>
+                    </div>
+
+                    @if (!string.IsNullOrWhiteSpace(Input.ThumbnailUrl))
+                    {
+                        <div class="mb-3">
+                            <img src="@BooksApi.GetCoverUrl(Input.ThumbnailUrl)"
+                                 alt="Anteprima copertina"
+                                 style="max-width:120px;max-height:180px;" />
+                        </div>
+                    }
+
+                    <div class="mb-3">
+                        <label class="form-label">Copertina</label>
+
+                        <InputFile OnChange="OnCoverChanged"
+                                   accept="image/jpeg,image/png,image/webp"
+                                   class="form-control" />
+
+                        <div class="form-text">
+                            JPG, PNG o WebP. Massimo 2 MB.
+                        </div>
+
+                        @if (selectedFile is not null)
+                        {
+                            <small>
+                                File selezionato: @selectedFile.Name
+                            </small>
+                        }
+                    </div>
+
+                    <div class="form-check mb-3">
+                        <InputCheckbox class="form-check-input"
+                                       id="published"
+                                       @bind-Value="Input.IsPublished" />
+
+                        <label class="form-check-label"
+                               for="published">
+                            Rendi pubblico il libro
+                        </label>
+                    </div>
+
+                    <button type="submit"
+                            class="btn btn-primary me-2"
+                            disabled="@isSaving">
+                        @(isSaving ? "Salvataggio..." : "Salva libro")
+                    </button>
+
+                    <button type="button"
+                            class="btn btn-secondary"
+                            disabled="@isSaving"
+                            @onclick="CancelEdit">
+                        Annulla
+                    </button>
+                </EditForm>
+            </div>
+        </div>
+    }
+
+    @if (books.Count == 0)
+    {
+        <div class="alert alert-info">
+            Non hai ancora inserito libri nella tua libreria.
+        </div>
+    }
+    else
+    {
+        <div class="row g-3">
+            @foreach (var book in books)
+            {
+                <div class="col-md-6" @key="book.Id">
+                    <div class="card h-100">
+                        <div class="card-body d-flex gap-3">
+
+                            @if (!string.IsNullOrWhiteSpace(
+                                book.ThumbnailUrl ?? book.ImageUrl))
+                            {
+                                <img src="@BooksApi.GetCoverUrl(
+                                        book.ThumbnailUrl ?? book.ImageUrl)"
+                                     alt="@book.Title"
+                                     style="width:85px;height:120px;object-fit:contain;" />
+                            }
+
+                            <div class="flex-grow-1">
+                                <h5>@book.Title</h5>
+
+                                <p class="mb-1">@book.Author</p>
+
+                                <p class="mb-2">
+                                    @if (book.IsPublished)
+                                    {
+                                        <span class="badge bg-success">
+                                            Pubblicato
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary">
+                                            Non pubblicato
+                                        </span>
+                                    }
+                                </p>
+
+                                <button class="btn btn-sm btn-outline-primary me-1"
+                                        @onclick="() => EditBook(book)">
+                                    Modifica
+                                </button>
+
+                                @if (book.IsPublished)
+                                {
+                                    <button class="btn btn-sm btn-outline-secondary me-1"
+                                            @onclick="() => UnpublishBookAsync(book)">
+                                        Nascondi
+                                    </button>
+                                }
+
+                                <button class="btn btn-sm btn-outline-danger"
+                                        @onclick="() => DeleteBookAsync(book)">
+                                    Elimina
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+}
+
+@code {
+    private List<BookResponse> books = [];
+    private List<CategoryResponse> categories = [];
+
+    private BookRequest Input = new();
+    private Guid? editingId;
+    private IBrowserFile? selectedFile;
+
+    private bool isLoading = true;
+    private bool showEditor;
+    private bool isSaving;
+    private bool isLookingUp;
+
+    private string? error;
+    private string? message;
+
+    [SupplyParameterFromQuery(Name = "nuovo")]
+    public bool Nuovo { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        if (Nuovo)
+            NewBook();
+    }
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            categories = await BooksApi.GetCategoriesAsync();
+            books = await BooksApi.GetMineAsync();
+        }
+        catch (Exception ex)
+        {
+            error = $"Impossibile caricare i libri: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void NewBook()
+    {
+        Input = new BookRequest();
+        editingId = null;
+        selectedFile = null;
+        error = null;
+        message = null;
+        showEditor = true;
+    }
+
+    private void EditBook(BookResponse book)
+    {
+        editingId = book.Id;
+
+        Input = new BookRequest
+        {
+            Title = book.Title,
+            Author = book.Author,
+            ISBN = book.ISBN,
+            Description = book.Description,
+            PublicationYear = book.PublicationYear,
+            ImageUrl = book.ImageUrl,
+            ThumbnailUrl = book.ThumbnailUrl,
+            IsPublished = book.IsPublished,
+            CategoryIds = book.CategoryIds.ToList()
+        };
+
+        selectedFile = null;
+        error = null;
+        message = null;
+        showEditor = true;
+    }
+
+    private void CancelEdit()
+    {
+        showEditor = false;
+        editingId = null;
+        selectedFile = null;
+        error = null;
+    }
+
+    private void SetCategory(Guid categoryId, bool selected)
+    {
+        if (selected)
+        {
+            if (!Input.CategoryIds.Contains(categoryId))
+                Input.CategoryIds.Add(categoryId);
+        }
+        else
+        {
+            Input.CategoryIds.Remove(categoryId);
+        }
+    }
+
+    private async Task LookupIsbnAsync()
+    {
+        if (string.IsNullOrWhiteSpace(Input.ISBN))
+        {
+            error = "Inserisci un ISBN.";
+            return;
+        }
+
+        isLookingUp = true;
+        error = null;
+
+        try
+        {
+            var result = await BooksApi.LookupIsbnAsync(Input.ISBN);
+
+            if (result is null || !result.Found)
+            {
+                error = result?.Message ?? "Libro non trovato.";
+                return;
+            }
+
+            Input.Title = result.Title ?? Input.Title;
+            Input.Author = result.Author ?? Input.Author;
+            Input.Description = result.Description ?? Input.Description;
+            Input.PublicationYear =
+                result.PublicationYear ?? Input.PublicationYear;
+
+            Input.ThumbnailUrl =
+                result.ThumbnailUrl ?? Input.ThumbnailUrl;
+        }
+        catch (Exception ex)
+        {
+            error = $"Errore ricerca ISBN: {ex.Message}";
+        }
+        finally
+        {
+            isLookingUp = false;
+        }
+    }
+
+    private void OnCoverChanged(InputFileChangeEventArgs e)
+    {
+        selectedFile = null;
+        error = null;
+
+        var file = e.File;
+
+        if (file.Size == 0 || file.Size > 2 * 1024 * 1024)
+        {
+            error = "La copertina non deve superare 2 MB.";
+            return;
+        }
+
+        if (file.ContentType is not
+            ("image/jpeg" or "image/png" or "image/webp"))
+        {
+            error = "Formato immagine non valido.";
+            return;
+        }
+
+        selectedFile = file;
+    }
+
+    private async Task SaveBookAsync()
+    {
+        if (isSaving)
+            return;
+
+        isSaving = true;
+        error = null;
+        message = null;
+
+        var bookSaved = false;
+
+        try
+        {
+            var savedBook = await BooksApi.SaveAsync(Input, editingId);
+            bookSaved = true;
+
+            editingId = savedBook.Id;
+            Input.ImageUrl = savedBook.ImageUrl;
+            Input.ThumbnailUrl = savedBook.ThumbnailUrl;
+
+            if (selectedFile is not null)
+            {
+                var cover = await BooksApi.UploadCoverAsync(
+                    savedBook.Id, selectedFile);
+
+                Input.ImageUrl = cover.ImageUrl;
+                Input.ThumbnailUrl = cover.ThumbnailUrl;
+            }
+
+            books = await BooksApi.GetMineAsync();
+
+            selectedFile = null;
+            showEditor = false;
+            editingId = null;
+            message = "Libro salvato correttamente.";
+        }
+        catch (Exception ex)
+        {
+            error = bookSaved
+                ? $"Il libro è stato salvato, ma non è stato possibile completare l'operazione: {ex.Message}"
+                : $"Impossibile salvare il libro: {ex.Message}";
+
+            if (bookSaved)
+            {
+                try
+                {
+                    books = await BooksApi.GetMineAsync();
+                }
+                catch
+                {
+                    // Il libro è già salvato.
+                }
+            }
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private async Task UnpublishBookAsync(BookResponse book)
+    {
+        error = null;
+        message = null;
+
+        try
+        {
+            await BooksApi.UnpublishAsync(book.Id);
+            books = await BooksApi.GetMineAsync();
+
+            message = "Libro nascosto correttamente.";
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+    }
+
+    private async Task DeleteBookAsync(BookResponse book)
+    {
+        var confirmed = await JS.InvokeAsync<bool>(
+            "confirm",
+            $"Vuoi eliminare il libro '{book.Title}'?");
+
+        if (!confirmed)
+            return;
+
+        error = null;
+        message = null;
+
+        try
+        {
+            await BooksApi.DeleteAsync(book.Id);
+
+            books = await BooksApi.GetMineAsync();
+
+            if (editingId == book.Id)
+                CancelEdit();
+
+            message = "Libro eliminato correttamente.";
+        }
+        catch (Exception ex)
+        {
+            error = $"Impossibile eliminare il libro: {ex.Message}";
+        }
+    }
+}

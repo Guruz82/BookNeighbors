@@ -1,0 +1,171 @@
+
+@page "/profile"
+@using BookNeighbors.Client.Interfaces
+@using BookNeighbors.DTO.Account
+
+@inject IAccountManagement Acct
+
+<PageTitle>Il mio profilo - Book Neighbors</PageTitle>
+
+<h1>Il mio profilo</h1>
+
+@if (isLoading)
+{
+    <p>Caricamento profilo...</p>
+}
+else if (unauthorized)
+{
+    <div class="alert alert-warning">
+        Devi effettuare il <a href="/login">login</a>
+        per visualizzare il profilo.
+    </div>
+}
+else if (!profileLoaded)
+{
+    <div class="alert alert-danger">
+        Impossibile caricare il profilo.
+    </div>
+}
+else
+{
+    <p>
+        <strong>Email:</strong> @email
+    </p>
+
+    @if (saved)
+    {
+        <div class="alert alert-success">
+            Profilo aggiornato correttamente.
+        </div>
+    }
+
+    @foreach (var error in errors)
+    {
+        <div class="alert alert-danger">
+            @error
+        </div>
+    }
+
+    <EditForm Model="@Input"
+              OnValidSubmit="SaveProfileAsync"
+              Context="profileFormContext">
+
+        <DataAnnotationsValidator />
+
+        <div class="mb-3">
+            <label for="displayName" class="form-label">
+                Nome visualizzato
+            </label>
+            <InputText id="displayName"
+                       class="form-control"
+                       @bind-Value="Input.DisplayName" />
+            <ValidationMessage For="() => Input.DisplayName" />
+        </div>
+
+        <div class="mb-3">
+            <label for="firstName" class="form-label">
+                Nome
+            </label>
+            <InputText id="firstName"
+                       class="form-control"
+                       @bind-Value="Input.FirstName" />
+            <ValidationMessage For="() => Input.FirstName" />
+        </div>
+
+        <div class="mb-3">
+            <label for="lastName" class="form-label">
+                Cognome
+            </label>
+            <InputText id="lastName"
+                       class="form-control"
+                       @bind-Value="Input.LastName" />
+            <ValidationMessage For="() => Input.LastName" />
+        </div>
+
+        <div class="mb-3">
+            <label for="bio" class="form-label">
+                Biografia
+            </label>
+            <InputTextArea id="bio"
+                           class="form-control"
+                           rows="4"
+                           @bind-Value="Input.Bio" />
+            <ValidationMessage For="() => Input.Bio" />
+        </div>
+
+        <button type="submit"
+                class="btn btn-primary"
+                disabled="@isSaving">
+            @(isSaving ? "Salvataggio..." : "Salva modifiche")
+        </button>
+    </EditForm>
+}
+
+@code {
+    private AccountProfileRequest Input = new();
+
+    private string email = string.Empty;
+    private string[] errors = [];
+
+    private bool isLoading = true;
+    private bool isSaving;
+    private bool profileLoaded;
+    private bool unauthorized;
+    private bool saved;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var profile = await Acct.GetProfileAsync();
+
+            if (profile is null)
+            {
+                unauthorized = true;
+                return;
+            }
+
+            email = profile.Email;
+
+            Input = new AccountProfileRequest
+            {
+                DisplayName = profile.DisplayName,
+                FirstName = profile.FirstName,
+                LastName = profile.LastName,
+                Bio = profile.Bio
+            };
+
+            profileLoaded = true;
+        }
+        catch (Exception)
+        {
+            errors = ["Impossibile recuperare i dati del profilo."];
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task SaveProfileAsync()
+    {
+        if (isSaving)
+            return;
+
+        isSaving = true;
+        saved = false;
+        errors = [];
+
+        try
+        {
+            var result = await Acct.UpdateProfileAsync(Input);
+
+            saved = result.Succeeded;
+            errors = result.ErrorList;
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+}

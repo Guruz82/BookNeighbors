@@ -32,5 +32,9 @@ namespace BookNeighbors.Client.Interfaces;
         public Task<FormResult> RegisterAsync(RegisterRequest request);
 
         public Task<bool> CheckAuthenticatedAsync();
+         public   Task<AccountProfileResponse?> GetProfileAsync();
+
+         public   Task<FormResult> UpdateProfileAsync(AccountProfileRequest request);
+
     }
  

@@ -238,4 +238,46 @@ public class CookieAuthenticationStateProvider(
 
         return ["Operazione non riuscita."];
     }
+
+    public async Task<AccountProfileResponse?> GetProfileAsync()
+{
+    using var response = await httpClient.GetAsync("api/account/me");
+
+    if (response.StatusCode == HttpStatusCode.Unauthorized)
+        return null;
+
+    response.EnsureSuccessStatusCode();
+
+    return await response.Content
+        .ReadFromJsonAsync<AccountProfileResponse>();
+}
+
+public async Task<FormResult> UpdateProfileAsync(
+    AccountProfileRequest request)
+{
+    try
+    {
+        using var response = await httpClient.PutAsJsonAsync(
+            "api/account/me", request);
+
+        if (response.IsSuccessStatusCode)
+            return new FormResult { Succeeded = true };
+
+        return new FormResult
+        {
+            Succeeded = false,
+            ErrorList = await ReadErrorsAsync(response)
+        };
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Errore durante l'aggiornamento del profilo");
+
+        return new FormResult
+        {
+            Succeeded = false,
+            ErrorList = ["Impossibile aggiornare il profilo."]
+        };
+    }
+}
 }

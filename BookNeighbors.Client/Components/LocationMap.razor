@@ -1,0 +1,89 @@
+
+@using Microsoft.JSInterop
+@using BookNeighbors.Client.Models.Maps
+
+@implements IAsyncDisposable
+
+@inject IJSRuntime JS
+
+<div @ref="mapElement"
+     style="@($"width:100%;height:{Height};")">
+</div>
+
+@code {
+    [Parameter]
+    public double? Latitude { get; set; }
+
+    [Parameter]
+    public double? Longitude { get; set; }
+
+    [Parameter]
+    public double? RadiusKm { get; set; }
+
+    [Parameter]
+    public bool Editable { get; set; } = true;
+
+    [Parameter]
+    public string Height { get; set; } = "350px";
+
+    [Parameter]
+    public EventCallback<(double Latitude, double Longitude)>  OnLocationChanged { get; set; }
+    
+    [Parameter]
+    public IReadOnlyList<MapMarker> Markers { get; set; } = [];
+
+    private ElementReference mapElement;
+    private IJSObjectReference? module;
+    private DotNetObjectReference<LocationMap>? dotNetReference;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            module = await JS.InvokeAsync<IJSObjectReference>(
+                "import", "./js/locationMap.js");
+
+            dotNetReference = DotNetObjectReference.Create(this);
+
+            await module.InvokeVoidAsync(
+                "initialize",
+                mapElement,
+                Latitude ?? 45.4642,
+                Longitude ?? 9.1900,
+                Latitude.HasValue && Longitude.HasValue,
+                Editable,
+                RadiusKm,
+                dotNetReference);
+        }
+        else if (module is not null)
+        {
+            await module.InvokeVoidAsync(
+                "update",
+                mapElement,
+                Latitude,
+                Longitude,
+                RadiusKm,
+                Markers);
+        }
+    }
+
+    [JSInvokable]
+    public async Task PositionChangedFromJs(
+        double latitude,
+        double longitude)
+    {
+        await OnLocationChanged.InvokeAsync(
+            (latitude, longitude));
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (module is not null)
+        {
+            await module.InvokeVoidAsync("dispose", mapElement);
+            await module.DisposeAsync();
+        }
+
+        dotNetReference?.Dispose();
+    }
+}

@@ -1,5 +1,7 @@
-﻿@inherits LayoutComponentBase
+﻿
+@inherits LayoutComponentBase
 @using Microsoft.AspNetCore.Components.Authorization
+
 <div class="page">
     <div class="sidebar">
         <NavMenu />
@@ -7,15 +9,33 @@
 
     <main>
         <div class="top-row px-4">
-         <AuthorizeView>
-                <Authorized>
-                    Logged in as @context.User.Identity?.Name. <a href="logout"><span class="bi bi-door-closed-fill" aria-hidden="true" style="vertical-align:middle"></span> Logout</a>
+
+            <AuthorizeView>
+                <Authorized Context="authState">
+                    <span class="me-3">
+                        @authState.User.Identity?.Name
+                    </span>
+
+                    <a href="/profile" class="me-3">
+                        Profilo
+                    </a>
+
+                    <a href="/logout">
+                        Esci
+                    </a>
                 </Authorized>
+
                 <NotAuthorized>
-                    <a href="login"><span class="bi bi-door-open" aria-hidden="true" style="vertical-align:middle"></span> Login</a>
-                    <a href="register"><span class="bi bi-pencil-square" aria-hidden="true" style="vertical-align:middle"></span> Register</a>
+                    <a href="/login" class="me-3">
+                        Accedi
+                    </a>
+
+                    <a href="/register">
+                        Registrati
+                    </a>
                 </NotAuthorized>
             </AuthorizeView>
+
         </div>
 
         <article class="content px-4">

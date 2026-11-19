@@ -1,0 +1,211 @@
+
+@page "/prestiti"
+@using System.Net
+@using BookNeighbors.Client.Interfaces
+@using BookNeighbors.Client.Services
+@using BookNeighbors.DTO.Loans
+
+@inject ILoanClientService LoansApi
+
+<PageTitle>Prestiti - Book Neighbors</PageTitle>
+
+<h1>Prestiti</h1>
+
+@if (!string.IsNullOrWhiteSpace(message))
+{
+    <div class="alert alert-success">@message</div>
+}
+
+@if (!string.IsNullOrWhiteSpace(error))
+{
+    <div class="alert alert-danger">@error</div>
+}
+
+@if (isLoading)
+{
+    <p>Caricamento prestiti...</p>
+}
+else if (unauthorized)
+{
+    <p>
+        Devi effettuare il
+        <a href="/login">login</a>
+        per gestire i prestiti.
+    </p>
+}
+else
+{
+    <h2 class="mt-4">Richieste inviate</h2>
+
+    @if (sent.Count == 0)
+    {
+        <p>Non hai ancora richiesto libri in prestito.</p>
+    }
+    else
+    {
+        <div class="list-group mb-4">
+            @foreach (var loan in sent)
+            {
+                <div class="list-group-item" @key="loan.Id">
+                    <div class="d-flex justify-content-between gap-3">
+                        <div>
+                            <strong>@loan.BookTitle</strong>
+
+                            <div>
+                                Stato: @StatusLabel(loan.Status)
+                            </div>
+
+                            <small class="text-muted">
+                                Richiesto il
+                                @loan.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy")
+                            </small>
+                        </div>
+
+                        @if (loan.Status == "Pending")
+                        {
+                            <div>
+                                <button class="btn btn-sm btn-outline-danger"
+                                        disabled="@isProcessing"
+                                        @onclick='() => ChangeStatusAsync(
+                                            loan.Id, "cancel")'>
+                                    Annulla
+                                </button>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    }
+
+    <h2 class="mt-4">Richieste ricevute</h2>
+
+    @if (received.Count == 0)
+    {
+        <p>Non hai ricevuto richieste di prestito.</p>
+    }
+    else
+    {
+        <div class="list-group">
+            @foreach (var loan in received)
+            {
+                <div class="list-group-item" @key="loan.Id">
+                    <strong>@loan.BookTitle</strong>
+
+                    <div>
+                        Richiesto da: @loan.RequesterDisplayName
+                    </div>
+
+                    <div>
+                        Stato: @StatusLabel(loan.Status)
+                    </div>
+
+                    <small class="text-muted">
+                        @loan.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy")
+                    </small>
+
+                    <div class="mt-2">
+                        @if (loan.Status == "Pending")
+                        {
+                            <button class="btn btn-sm btn-success me-2" disabled="@isProcessing" @onclick='() => ChangeStatusAsync(loan.Id, "accept")'>
+                                Accetta
+                            </button>
+
+                            <button class="btn btn-sm btn-outline-danger"
+                                    disabled="@isProcessing"
+                                    @onclick='() => ChangeStatusAsync(loan.Id, "reject")'>
+                                Rifiuta
+                            </button>
+                        }
+
+                        @if (loan.Status == "Accepted")
+                        {
+                            <button class="btn btn-sm btn-primary"
+                                    disabled="@isProcessing"
+                                    @onclick='() => ChangeStatusAsync(
+                                        loan.Id, "return")'>
+                                Registra restituzione
+                            </button>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    }
+}
+
+@code {
+    private List<LoanResponse> sent = [];
+    private List<LoanResponse> received = [];
+
+    private bool isLoading = true;
+    private bool isProcessing;
+    private bool unauthorized;
+
+    private string? error;
+    private string? message;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await LoadLoansAsync();
+        }
+        catch (HttpRequestException ex)
+            when (ex.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            unauthorized = true;
+        }
+        catch (Exception ex)
+        {
+            error = $"Errore caricamento prestiti: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task LoadLoansAsync()
+    {
+        sent = await LoansApi.GetSentAsync();
+        received = await LoansApi.GetReceivedAsync();
+    }
+
+    private async Task ChangeStatusAsync(Guid id, string action)
+    {
+        if (isProcessing)
+            return;
+
+        isProcessing = true;
+        error = null;
+        message = null;
+
+        try
+        {
+            await LoansApi.ChangeStatusAsync(id, action);
+            await LoadLoansAsync();
+
+            message = "Operazione completata correttamente.";
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            isProcessing = false;
+        }
+    }
+
+    private static string StatusLabel(string status) =>
+        status switch
+        {
+            "Pending" => "In attesa",
+            "Accepted" => "Accettato",
+            "Rejected" => "Rifiutato",
+            "Cancelled" => "Annullato",
+            "Returned" => "Restituito",
+            _ => status
+        };
+}
