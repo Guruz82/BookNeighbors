@@ -5,9 +5,12 @@ using Microsoft.EntityFrameworkCore;
 
 namespace BookNeighbors.Api.Services;
 
-public class CategoryService(ApplicationDbContext dbContext)
-    : ICategoryService
+public class CategoryService(ApplicationDbContext dbContext) : ICategoryService
 {
+    /// <summary>
+    /// Restituisce tutte le categorie disponibili.
+    /// </summary>
+    /// <returns></returns>
     public async Task<List<Category>> GetCategoriesAsync()
     {
         return await dbContext.Categories

@@ -1,0 +1,331 @@
+@page "/admin/dashboard"
+
+@using System.Net
+@using BookNeighbors.Client.Services
+@using BookNeighbors.DTO.Statistics
+
+@implements IAsyncDisposable
+
+@inject StatisticsClientService StatisticsApi
+@inject IJSRuntime JS
+
+<PageTitle>Statistiche - Book Neighbors</PageTitle>
+
+@*pagina statistiche*@
+
+
+<h1>Statistiche di Book Neighbors</h1>
+
+<p>
+    Riepilogo delle attività e delle richieste di prestito presenti nell'applicazione.
+</p>
+
+@if (loading)
+{
+    <p role="status">Caricamento delle statistiche...</p>
+}
+else if (!string.IsNullOrWhiteSpace(error))
+{
+    <div class="alert alert-danger" role="alert">
+        @error
+    </div>
+}
+else if (overview is not null)
+{
+    @* Indicatori principali *@
+    <div class="row g-3 mb-4">
+        @*utenti registrati*@
+        <div class="col-sm-6 col-lg-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h2 class="h6">Utenti registrati</h2>
+                    <p class="display-6 mb-0">
+                        @overview.RegisteredUsers
+                    </p>
+                </div>
+            </div>
+        </div>
+        @*librerie pubblicate*@
+        <div class="col-sm-6 col-lg-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h2 class="h6">Librerie pubblicate</h2>
+                    <p class="display-6 mb-0">
+                        @overview.PublishedLibraries
+                    </p>
+                    <small class="text-muted">
+                        Su @overview.Libraries librerie totali
+                    </small>
+                </div>
+            </div>
+        </div>
+        @*libri pubblicati e visibili*@
+        <div class="col-sm-6 col-lg-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h2 class="h6">Libri pubblicati e visibili</h2>
+                    <p class="display-6 mb-0">
+                        @overview.PublishedBooks
+                    </p>
+                    <small class="text-muted">
+                        Su @overview.Books libri totali
+                    </small>
+                </div>
+            </div>
+        </div>
+        @*richieste di prestito*@
+        <div class="col-sm-6 col-lg-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h2 class="h6">Richieste di prestito</h2>
+                    <p class="display-6 mb-0">
+                        @overview.LoanRequests
+                    </p>
+                    <small class="text-muted">
+                        @overview.ActiveLoans prestiti attivi
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* Grafici delle richieste di prestito *@
+    <div class="row g-4">
+
+        <section class="col-lg-5"
+                 aria-labelledby="loan-status-heading">
+
+            <h2 id="loan-status-heading" class="h4">
+                Prestiti per stato
+            </h2>
+
+            <canvas @ref="statusCanvas" role="img" aria-label="Grafico delle richieste di prestito per stato">
+            </canvas>
+
+            <table class="table table-sm mt-3">
+                <caption> Conteggi delle richieste per stato</caption>
+                <thead>
+                    <tr>
+                        <th scope="col">Stato</th>
+                        <th scope="col">Richieste</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var status in loanStatuses)
+                    {
+                        <tr>
+                            <th scope="row">
+                                @TranslateStatus(status.Label)
+                            </th>
+                            <td>@status.Count</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </section>
+
+        <section class="col-lg-7"
+                 aria-labelledby="loan-trend-heading">
+
+            <h2 id="loan-trend-heading" class="h4">
+                Richieste negli ultimi 30 giorni
+            </h2>
+
+            <canvas @ref="trendCanvas"
+                    role="img"
+                    aria-label="Andamento giornaliero delle richieste di prestito">
+            </canvas>
+
+            <details class="mt-3">
+                <summary>
+                    Visualizza i dati giornalieri in tabella
+                </summary>
+
+                <table class="table table-sm">
+                    <caption>
+                        Richieste per giorno, date in UTC
+                    </caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">Giorno</th>
+                            <th scope="col">Richieste</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in loanTrend)
+                        {
+                            <tr>
+                                <th scope="row">@item.Label</th>
+                                <td>@item.Count</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </details>
+        </section>
+    </div>
+
+    @* Classifica dei libri più visualizzati *@
+    <section class="mt-4"
+             aria-labelledby="top-books-heading">
+
+        <h2 id="top-books-heading" class="h4">
+            Libri più visualizzati
+        </h2>
+
+        <p>
+            Visualizzazioni registrate: @overview.BookViews
+        </p>
+
+        @if (topBooks.Count == 0)
+        {
+            <p>
+                Nessuna visualizzazione registrata.
+                Il conteggio sarà disponibile quando verrà
+                attivato il tracciamento delle aperture dei libri.
+            </p>
+        }
+        else
+        {
+            <table class="table table-striped">
+                <caption>
+                    Libri ordinati per numero di visualizzazioni
+                </caption>
+                <thead>
+                    <tr>
+                        <th scope="col">Libro</th>
+                        <th scope="col">Visualizzazioni</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var book in topBooks)
+                    {
+                        <tr>
+                            <th scope="row">@book.Label</th>
+                            <td>@book.Count</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </section>
+}
+
+@code {
+    private DashboardStatisticsResponse? overview;
+
+    private List<ChartDataResponse> loanStatuses = [];
+    private List<ChartDataResponse> loanTrend = [];
+    private List<ChartDataResponse> topBooks = [];
+
+    private string? error;
+    private bool loading = true;
+    private bool chartsRendered;
+
+    private ElementReference statusCanvas;
+    private ElementReference trendCanvas;
+
+    private IJSObjectReference? chartsModule;
+
+    // Carica i dati attraverso le API.
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            overview = await StatisticsApi.GetOverviewAsync();
+
+            loanStatuses =
+                await StatisticsApi.GetLoanStatusesAsync();
+
+            loanTrend =
+                await StatisticsApi.GetLoanTrendAsync();
+
+            topBooks =
+                await StatisticsApi.GetTopBooksAsync();
+        }
+        catch (HttpRequestException ex) when (
+            ex.StatusCode is
+                HttpStatusCode.Unauthorized or
+                HttpStatusCode.Forbidden)
+        {
+            error = "Non sei autorizzato a visualizzare le statistiche.";
+        }
+        catch (Exception)
+        {
+            error = "Impossibile recuperare le statistiche.";
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    // Disegna i grafici quando gli elementi HTML sono disponibili.
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (loading || overview is null || chartsRendered)
+            return;
+
+        chartsRendered = true;
+
+        try
+        {
+            chartsModule ??=
+                await JS.InvokeAsync<IJSObjectReference>(
+                    "import",
+                    "./js/statisticsCharts.js");
+
+            await chartsModule.InvokeVoidAsync(
+                "renderCharts",
+                statusCanvas,
+                trendCanvas,
+                loanStatuses
+                    .Select(s => TranslateStatus(s.Label))
+                    .ToArray(),
+                loanStatuses
+                    .Select(s => s.Count)
+                    .ToArray(),
+                loanTrend
+                    .Select(s => s.Label)
+                    .ToArray(),
+                loanTrend
+                    .Select(s => s.Count)
+                    .ToArray()
+            );
+        }
+        catch (JSException)
+        {
+            // Le tabelle restano disponibili
+            // anche se i grafici non vengono caricati.
+        }
+    }
+
+    private static string TranslateStatus(string name)
+    {
+        return name switch
+        {
+            "Pending" => "In attesa",
+            "Accepted" => "Accettato",
+            "Rejected" => "Rifiutato",
+            "Returned" => "Restituito",
+            "Cancelled" => "Annullato",
+            _ => name
+        };
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (chartsModule is null)
+            return;
+
+        try
+        {
+            await chartsModule.InvokeVoidAsync("disposeCharts");
+            await chartsModule.DisposeAsync();
+        }
+        catch (JSDisconnectedException)
+        {
+            // Modulo JavaScript non più disponibile.
+        }
+    }
+}

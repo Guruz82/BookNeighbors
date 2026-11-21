@@ -1,4 +1,8 @@
-﻿CREATE TABLE IF NOT EXISTS "__EFMigrationsHistory" (
+﻿-- Script per la generazione dello schema iniziale del database
+-- DB : BookNeighbors 
+-- Server: PostgreSQL 17 / PostGis
+
+CREATE TABLE IF NOT EXISTS "__EFMigrationsHistory" (
     "MigrationId" character varying(150) NOT NULL,
     "ProductVersion" character varying(32) NOT NULL,
     CONSTRAINT "PK___EFMigrationsHistory" PRIMARY KEY ("MigrationId")
@@ -364,6 +368,133 @@ BEGIN
     IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261114190433_InitialCreate') THEN
     INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
     VALUES ('20261114190433_InitialCreate', '10.0.14');
+    END IF;
+END $EF$;
+COMMIT;
+
+START TRANSACTION;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261114232440_UniqueLibraryPerUser') THEN
+    DROP INDEX "IX_Libraries_user_id";
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261114232440_UniqueLibraryPerUser') THEN
+    CREATE UNIQUE INDEX "IX_Libraries_user_id" ON "Libraries" (user_id);
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261114232440_UniqueLibraryPerUser') THEN
+    INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+    VALUES ('20261114232440_UniqueLibraryPerUser', '10.0.14');
+    END IF;
+END $EF$;
+COMMIT;
+
+START TRANSACTION;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261121015801_RemoveFirstNameLastName') THEN
+    ALTER TABLE "AspNetUsers" DROP COLUMN "FirstName";
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261121015801_RemoveFirstNameLastName') THEN
+    ALTER TABLE "AspNetUsers" DROP COLUMN "LastName";
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261121015801_RemoveFirstNameLastName') THEN
+    INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+    VALUES ('20261121015801_RemoveFirstNameLastName', '10.0.14');
+    END IF;
+END $EF$;
+COMMIT;
+
+START TRANSACTION;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261121033255_AddNotifications') THEN
+    CREATE TABLE "Notifications" (
+        "Id" uuid NOT NULL,
+        "UserId" uuid NOT NULL,
+        "Title" character varying(150) NOT NULL,
+        "Message" character varying(1000) NOT NULL,
+        "Url" character varying(500),
+        "IsRead" boolean NOT NULL,
+        "CreatedAt" timestamp with time zone NOT NULL,
+        "ReadAt" timestamp with time zone,
+        CONSTRAINT "PK_Notifications" PRIMARY KEY ("Id"),
+        CONSTRAINT "FK_Notifications_AspNetUsers_UserId" FOREIGN KEY ("UserId") REFERENCES "AspNetUsers" ("Id") ON DELETE CASCADE
+    );
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261121033255_AddNotifications') THEN
+    CREATE INDEX "IX_Notifications_UserId_IsRead_CreatedAt" ON "Notifications" ("UserId", "IsRead", "CreatedAt");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261121033255_AddNotifications') THEN
+    INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+    VALUES ('20261121033255_AddNotifications', '10.0.14');
+    END IF;
+END $EF$;
+COMMIT;
+
+START TRANSACTION;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261121105212_AddLoanMessages') THEN
+    CREATE TABLE "LoanMessages" (
+        "Id" uuid NOT NULL,
+        "LoanRequestId" uuid NOT NULL,
+        "SenderId" uuid NOT NULL,
+        "Text" character varying(2000) NOT NULL,
+        "CreatedAt" timestamp with time zone NOT NULL,
+        CONSTRAINT "PK_LoanMessages" PRIMARY KEY ("Id"),
+        CONSTRAINT "FK_LoanMessages_AspNetUsers_SenderId" FOREIGN KEY ("SenderId") REFERENCES "AspNetUsers" ("Id") ON DELETE RESTRICT,
+        CONSTRAINT "FK_LoanMessages_LoanRequests_LoanRequestId" FOREIGN KEY ("LoanRequestId") REFERENCES "LoanRequests" ("Id") ON DELETE RESTRICT
+    );
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261121105212_AddLoanMessages') THEN
+    CREATE INDEX "IX_LoanMessages_LoanRequestId_CreatedAt" ON "LoanMessages" ("LoanRequestId", "CreatedAt");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261121105212_AddLoanMessages') THEN
+    CREATE INDEX "IX_LoanMessages_SenderId" ON "LoanMessages" ("SenderId");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261121105212_AddLoanMessages') THEN
+    INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+    VALUES ('20261121105212_AddLoanMessages', '10.0.14');
     END IF;
 END $EF$;
 COMMIT;

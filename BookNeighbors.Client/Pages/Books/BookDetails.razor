@@ -1,0 +1,241 @@
+@page "/libri/{Id:guid}"
+
+@using BookNeighbors.Client.Services
+@using BookNeighbors.DTO.Books
+@using BookNeighbors.Client.Components
+
+@using BookNeighbors.Client.Interfaces
+@using Microsoft.AspNetCore.Components.Authorization
+
+@inject ILoanClientService LoansApi
+
+@inject BookClientService BooksApi
+
+<PageTitle>Dettaglio libro - Book Neighbors</PageTitle>
+
+@if (isLoading)
+{
+    <p role="status">Caricamento libro...</p>
+}
+else if (!string.IsNullOrEmpty(error))
+{
+    <div class="alert alert-danger" role="alert">
+        @error
+    </div>
+}
+else if (book is null)
+{
+    <h1>Libro non trovato</h1>
+    <p>Il libro richiesto non è disponibile.</p>
+}
+else
+{
+    <h1>@book.Title</h1>
+
+    <div class="row g-4 mt-2">
+
+        <div class="col-md-4 d-flex justify-content-center align-items-start">
+            <BookCover Title="@book.Title" ImageUrl="@book.ImageUrl" ThumbnailUrl="@book.ThumbnailUrl" PreferFullImage="true" Width="180px" Height="270px" />
+        </div>
+
+        <div class="col-md-8">
+
+            <p>
+                <strong>Autore:</strong> @book.Author
+            </p>
+
+            @if (!string.IsNullOrWhiteSpace(book.ISBN))
+            {
+                <p>
+                    <strong>ISBN:</strong> @book.ISBN
+                </p>
+            }
+
+            @if (book.PublicationYear.HasValue)
+            {
+                <p>
+                    <strong>Anno di pubblicazione:</strong>
+                    @book.PublicationYear
+                </p>
+            }
+
+            <p>
+                <strong>Libreria:</strong> @book.LibraryName
+            </p>
+
+            @if (!string.IsNullOrWhiteSpace(book.City))
+            {
+                <p>
+                    <strong>Città:</strong> @book.City
+                </p>
+            }
+
+            <p>
+                <strong>Disponibilità:</strong>
+
+                @if (book.IsLoaned)
+                {
+                    <span class="badge bg-warning text-dark">
+                        In prestito
+                    </span>
+                }
+                else
+                {
+                    <span class="badge bg-success">
+                        Disponibile
+                    </span>
+                }
+            </p>
+            <AuthorizeView>
+    <Authorized>
+        @if (book.IsLoaned)
+        {
+            <button class="btn btn-primary" disabled>
+                Libro attualmente in prestito
+            </button>
+        }
+        else
+        {
+            <button type="button"
+                    class="btn btn-primary"
+                    disabled="@(isRequesting || requestSent)"
+                    @onclick="RequestLoanAsync">
+                @(isRequesting ? "Invio richiesta..." :
+                  requestSent ? "Richiesta inviata" :
+                  "Richiedi in prestito")
+            </button>
+        }
+    </Authorized>
+
+    <NotAuthorized>
+        <p>
+            Per richiedere questo libro in prestito
+            devi effettuare l'accesso.
+        </p>
+
+        <a href="/login" class="btn btn-primary">
+            Accedi per richiedere il prestito
+        </a>
+    </NotAuthorized>
+</AuthorizeView>
+
+@if (!string.IsNullOrWhiteSpace(loanMessage))
+{
+    <div class="alert alert-success mt-3" role="status">
+        @loanMessage
+    </div>
+}
+
+@if (!string.IsNullOrWhiteSpace(loanError))
+{
+    <div class="alert alert-danger mt-3" role="alert">
+        @loanError
+    </div>
+}
+
+            <h2 class="h4 mt-4">Descrizione</h2>
+
+            <p style="white-space: pre-line">
+                @(string.IsNullOrWhiteSpace(book.Description)
+                    ? "Nessuna descrizione disponibile."
+                    : book.Description)
+            </p>
+
+        </div>
+    </div>
+}
+
+<div class="mt-4">
+    <a href="/" class="btn btn-outline-secondary">
+        Torna alla ricerca
+    </a>
+</div>
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private BookDetailsResponse? book;
+    private bool isLoading = true;
+    private string? error;
+    private bool isRequesting;
+    private bool requestSent;
+
+    private string? loanMessage;
+    private string? loanError;
+
+    /// <summary>
+    /// Carica i dettagli del libro quando il parametro Id cambia. Registra anche una visualizzazione del libro.
+    /// </summary>
+    /// <returns></returns>
+    protected override async Task OnParametersSetAsync()
+    {
+        requestSent = false;
+        loanMessage = null;
+        loanError = null;
+        isLoading = true;
+        error = null;
+        book = null;
+
+        try
+        {
+            // Recupera i dettagli pubblici del libro.
+            book = await BooksApi.GetPublicDetailsAsync(Id);
+
+            if (book is not null)
+            {
+                try
+                {
+                    // Registra una visualizzazione.
+                    await BooksApi.RegisterViewAsync(Id);
+                }
+                catch (Exception ex)
+                {
+                    // Un errore statistico non deve impedire
+                    // all'utente di consultare il libro.
+                    Console.Error.WriteLine(
+                        $"Errore registrazione visualizzazione: {ex.Message}");
+                }
+            }
+        }
+        catch (Exception)
+        {
+            error = "Impossibile caricare i dettagli del libro.";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+
+    /// <summary>
+    /// Richiede il prestito del libro. Disabilita il pulsante durante l'invio della richiesta e mostra un messaggio di conferma o errore.
+    /// </summary>
+    /// <returns></returns>
+    private async Task RequestLoanAsync()
+        {
+            if (book is null || book.IsLoaned || isRequesting || requestSent)
+                return;
+
+            isRequesting = true;
+            loanMessage = null;
+            loanError = null;
+
+            try
+            {
+                await LoansApi.RequestAsync(book.Id);
+
+                requestSent = true;
+                loanMessage = "Richiesta di prestito inviata correttamente.";
+            }
+            catch (Exception ex)
+            {
+                loanError = ex.Message;
+            }
+            finally
+            {
+                isRequesting = false;
+            }
+        }
+}

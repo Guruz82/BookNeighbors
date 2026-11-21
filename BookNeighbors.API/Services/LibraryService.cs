@@ -11,7 +11,11 @@ namespace BookNeighbors.Api.Services;
 
 public class LibraryService(ApplicationDbContext _dbContext, IGeoLocationService _geolocationService) : ILibraryService
 {
-
+    /// <summary>
+    /// Restituisce la libreria associata a un determinato utente, se esiste.
+    /// </summary>
+    /// <param name="userId"></param>
+    /// <returns></returns>
     public async Task<Library?> GetLibraryByUserIdAsync(Guid userId)
     {
         return await _dbContext.Libraries
@@ -20,7 +24,12 @@ public class LibraryService(ApplicationDbContext _dbContext, IGeoLocationService
     }
 
 
-
+    /// <summary>
+    ///  Crea una nuova libreria personale per l'utente specificato, utilizzando i dati forniti nella richiesta.
+    /// </summary>
+    /// <param name="userId"></param>
+    /// <param name="request"></param>
+    /// <returns></returns>
     public async Task<Library> CreateLibraryAsync(Guid userId, LibraryRequest request)
     {
 
@@ -45,7 +54,12 @@ public class LibraryService(ApplicationDbContext _dbContext, IGeoLocationService
 
 
 
-
+    /// <summary>
+    /// Aggiorna la libreria associata a un determinato utente, se esiste.
+    /// </summary>
+    /// <param name="userId"></param>
+    /// <param name="request"></param>
+    /// <returns></returns>
     public async Task<Library?> UpdateLibraryAsync(Guid userId, LibraryRequest request)
     {
 

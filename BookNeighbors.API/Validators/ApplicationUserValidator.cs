@@ -5,9 +5,13 @@ namespace BookNeighbors.Api.Validators;
 
 public class ApplicationUserValidator : IUserValidator<ApplicationUser>
 {
-    public Task<IdentityResult> ValidateAsync(
-        UserManager<ApplicationUser> manager,
-        ApplicationUser user)
+    /// <summary>
+    /// Valida un oggetto ApplicationUser per assicurarsi che soddisfi i requisiti specificati.
+    /// </summary>
+    /// <param name="manager"></param>
+    /// <param name="user"></param>
+    /// <returns></returns>
+    public Task<IdentityResult> ValidateAsync(UserManager<ApplicationUser> manager, ApplicationUser user)
     {
         var errors = new List<IdentityError>();
 
@@ -20,8 +24,7 @@ public class ApplicationUserValidator : IUserValidator<ApplicationUser>
             });
         }
 
-        if (!user.PrivacyNoticeAcknowledged ||
-            user.PrivacyNoticeAcknowledgedAt is null)
+        if (!user.PrivacyNoticeAcknowledged || user.PrivacyNoticeAcknowledgedAt is null)
         {
             errors.Add(new IdentityError
             {
@@ -30,9 +33,6 @@ public class ApplicationUserValidator : IUserValidator<ApplicationUser>
             });
         }
 
-        return Task.FromResult(
-            errors.Count == 0
-                ? IdentityResult.Success
-                : IdentityResult.Failed(errors.ToArray()));
+        return Task.FromResult(errors.Count == 0 ? IdentityResult.Success : IdentityResult.Failed(errors.ToArray()));
     }
 }

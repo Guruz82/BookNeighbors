@@ -1,0 +1,27 @@
+
+.book-cover {
+    flex-shrink: 0;
+}
+
+.book-cover img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    border-radius: 5px;
+}
+
+.book-cover-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f1f3f5;
+    border: 1px solid #dee2e6;
+    border-radius: 5px;
+    color: #6c757d;
+}
+
+.book-cover-placeholder i {
+    font-size: 2rem;
+}

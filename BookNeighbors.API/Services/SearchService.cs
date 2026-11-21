@@ -6,21 +6,20 @@ using Microsoft.EntityFrameworkCore;
 
 namespace BookNeighbors.Api.Services;
 
-public class SearchService(
-    ApplicationDbContext db,
-    IGeoLocationService geoLocationService) : ISearchService
+public class SearchService(ApplicationDbContext db, IGeoLocationService geoLocationService, ICoverUrlResolver coverUrlResolver) : ISearchService
 {
-    public async Task<List<BookSearchResponse>> SearchBooksAsync(
-        BookSearchRequest request)
+    /// <summary>
+    /// Cerca libri in base ai criteri di ricerca forniti.
+    /// </summary>
+    /// <param name="request"></param>
+    /// <returns></returns>
+    public async Task<List<BookSearchResponse>> SearchBooksAsync(BookSearchRequest request)
     {
-        var point = geoLocationService.CreatePoint(
-            request.Latitude!.Value,
-            request.Longitude!.Value);
+        var point = geoLocationService.CreatePoint(request.Latitude!.Value, request.Longitude!.Value);
 
         var radiusMeters = request.RadiusKm * 1000;
 
-        var query = db.Books
-            .AsNoTracking()
+        var query = db.Books.AsNoTracking()
             .Where(b =>
                 b.IsPublished &&
                 b.Library.IsPublished &&
@@ -55,9 +54,9 @@ public class SearchService(
                 Library = b.Library,
                 DistanceMeters = b.Library.Location.Distance(point),
 
-                 IsLoaned = db.LoanRequests.Any(l =>
-            l.BookId == b.Id &&
-            l.Status.Name == "Accepted")
+                IsLoaned = db.LoanRequests.Any(l =>
+           l.BookId == b.Id &&
+           l.Status.Name == "Accepted")
             })
             .ToListAsync();
 
@@ -68,7 +67,8 @@ public class SearchService(
             x.Library.City,
             x.Book.Title,
             x.Book.Author,
-            x.Book.ThumbnailUrl,
+           coverUrlResolver.Resolve(x.Book.ThumbnailUrl),
+            coverUrlResolver.Resolve(x.Book.ImageUrl),
             x.Library.Location.Y,
             x.Library.Location.X,
             Math.Round(x.DistanceMeters / 1000, 2),

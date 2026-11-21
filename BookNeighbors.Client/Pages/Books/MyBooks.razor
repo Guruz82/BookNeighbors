@@ -6,6 +6,7 @@
 @using BookNeighbors.DTO.Categories
 @using Microsoft.AspNetCore.Components.Forms
 @using Microsoft.JSInterop
+@using BookNeighbors.Client.Components
 
 @inject BookClientService BooksApi
 @inject IJSRuntime JS
@@ -203,14 +204,9 @@ else
                     <div class="card h-100">
                         <div class="card-body d-flex gap-3">
 
-                            @if (!string.IsNullOrWhiteSpace(
-                                book.ThumbnailUrl ?? book.ImageUrl))
-                            {
-                                <img src="@BooksApi.GetCoverUrl(
-                                        book.ThumbnailUrl ?? book.ImageUrl)"
-                                     alt="@book.Title"
-                                     style="width:85px;height:120px;object-fit:contain;" />
-                            }
+                          
+                                <BookCover Title="@book.Title" ThumbnailUrl="@book.ThumbnailUrl" ImageUrl="@book.ImageUrl" Width="85px" Height="120px" />
+
 
                             <div class="flex-grow-1">
                                 <h2 class="h5">@book.Title</h2>

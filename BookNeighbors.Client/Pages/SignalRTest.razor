@@ -1,0 +1,36 @@
+
+@page "/signalr-test"
+@using BookNeighbors.Client.Services
+@inject LoanChatConnectionService Chat
+@implements IAsyncDisposable
+
+<h3>Test SignalR</h3>
+
+<input class="form-control mb-2" @bind="loanId" placeholder="ID richiesta di prestito" />
+<button class="btn btn-primary" @onclick="ConnectAsync">Connetti</button>
+
+<p class="mt-3">@status</p>
+
+@code {
+    private string loanId = string.Empty;
+    private string status = "Non connesso";
+
+    private async Task ConnectAsync()
+    {
+        try
+        {
+            status = "Connessione in corso...";
+            await Chat.ConnectAsync(Guid.Parse(loanId));
+            status = Chat.IsConnected ? "SignalR connesso correttamente" : "Connessione non riuscita";
+        }
+        catch (Exception ex)
+        {
+            status = $"Errore: {ex.Message}";
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await Chat.DisposeAsync();
+    }
+}

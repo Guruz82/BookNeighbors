@@ -1,0 +1,193 @@
+
+@page "/prestiti/{LoanId:guid}/chat"
+@using BookNeighbors.Client.Services
+@using BookNeighbors.DTO.LoanMessages
+@using System.Net
+@inject LoanMessagesClientService MessagesApi
+@inject LoanChatConnectionService Chat
+@implements IAsyncDisposable
+
+<PageTitle>Messaggi Prestito - Book Neighbors</PageTitle>
+
+<div class="container py-3">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3>Conversazione</h3>
+        <a href="/prestiti" class="btn btn-outline-secondary btn-sm">Torna ai prestiti</a>
+    </div>
+    @*Mostra messaggi di errore o di stato in base alle condizioni correnti *@
+    @if (!string.IsNullOrWhiteSpace(error))
+    {
+        <div class="alert alert-danger" role="alert">@error</div>
+    }
+    @* Mostra un messaggio di caricamento mentre i messaggi sono in fase di recupero *@
+    @if (loading)
+    {
+        <p>Caricamento messaggi...</p>
+    }
+    else
+    {
+
+        @*Mostra la lista dei messaggi della conversazione, un'area di testo per scrivere un nuovo messaggio e un pulsante per inviare il messaggio *@
+        <div class="chat-messages border rounded p-3 mb-3">
+            @*Se non ci sono messaggi, mostra un messaggio di invito a iniziare la conversazione *@
+            @if (messages.Count == 0)
+            {
+                <p class="text-muted">Nessun messaggio. Inizia la conversazione!</p>
+            }
+            @*Itera attraverso la lista dei messaggi e visualizza ciascun messaggio con il nome del mittente, il testo del messaggio e la data di creazione formattata *@
+            @foreach (var message in messages)
+            {
+                <div class="chat-message mb-3" @key="message.Id">
+                    <strong>@message.SenderName</strong>
+                    <div class="chat-text">@message.Text</div>
+                    <small class="text-muted">@message.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</small>
+                </div>
+            }
+        </div>
+
+        <div class="mb-2">
+            @*Area di testo per scrivere un nuovo messaggio *@
+            <textarea class="form-control" rows="3" maxlength="2000" placeholder="Scrivi un messaggio..." @bind="text" disabled="@sending"></textarea>
+        </div>
+       @*Pulsante per inviare il messaggio *@
+        <button type="button" class="btn btn-primary" disabled="@(sending || string.IsNullOrWhiteSpace(text))" @onclick="SendAsync">Invia messaggio</button>
+
+        @*Mostra un messaggio di avviso se la connessione in tempo reale non è disponibile, suggerendo di ricaricare la conversazione per recuperare i messaggi *@
+        @if (!Chat.IsConnected)
+        {
+            <small class="d-block text-warning mt-2">Connessione in tempo reale non disponibile. I messaggi possono essere recuperati ricaricando la conversazione.</small>
+        }
+    }
+</div>
+
+@code {
+    [Parameter] public Guid LoanId { get; set; }
+
+    private List<LoanMessageResponse> messages = [];
+    private string text = string.Empty;
+    private string? error;
+    private bool loading = true;
+    private bool sending;
+
+    protected override void OnInitialized()
+    {
+        Chat.MessageReceived += OnMessageReceivedAsync;
+        Chat.Reconnected += ReloadMessagesAsync;
+    }
+    /// <summary>
+    ///     Carica i messaggi della conversazione per la richiesta di prestito specificata e stabilisce una connessione al SignalR Hub per ricevere aggiornamenti in tempo reale.
+    /// </summary>
+    /// <returns></returns>
+    protected override async Task OnParametersSetAsync()
+    {
+        loading = true;
+        error = null;
+
+        try
+        {
+            messages = await MessagesApi.GetMessagesAsync(LoanId);
+            await Chat.ConnectAsync(LoanId);
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
+        {
+            error = "Conversazione non trovata o accesso non autorizzato.";
+        }
+        catch (Exception ex)
+        {
+            error = $"Errore durante il caricamento: {ex.Message}";
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+
+    /// <summary>
+    ///       Invia un nuovo messaggio relativo alla richiesta di prestito specificata. Se l'invio ha successo, il messaggio viene aggiunto alla lista dei messaggi visualizzati e il campo di testo viene svuotato. In caso di errore, viene visualizzato un messaggio di errore appropriato.
+    /// </summary>
+    /// <returns></returns>
+    private async Task SendAsync()
+    {
+        if (sending || string.IsNullOrWhiteSpace(text)) return;
+
+        sending = true;
+        error = null;
+
+        try
+        {
+            var result = await MessagesApi.SendMessageAsync(LoanId, text);
+            AddMessage(result);
+            text = string.Empty;
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.Conflict)
+        {
+            error = "Il prestito è concluso o la conversazione non consente più l'invio di messaggi.";
+        }
+        catch (Exception ex)
+        {
+            error = $"Invio non riuscito: {ex.Message}";
+        }
+        finally
+        {
+            sending = false;
+        }
+    }
+    /// <summary>
+    /// Gestisce la ricezione di un nuovo messaggio tramite SignalR. Se il messaggio appartiene alla conversazione corrente, viene aggiunto alla lista dei messaggi visualizzati e viene forzato un aggiornamento dell'interfaccia utente.
+    /// </summary>
+    /// <param name="message"></param>
+    /// <returns></returns>
+    private Task OnMessageReceivedAsync(LoanMessageResponse message)
+    {
+        return InvokeAsync(() =>
+        {
+            if (message.LoanRequestId == LoanId) AddMessage(message);
+            StateHasChanged();
+        });
+    }
+    /// <summary>
+    ///   Ricarica i messaggi della conversazione dopo una riconnessione al SignalR Hub. Se il caricamento ha successo, aggiorna la lista dei messaggi visualizzati e forza un aggiornamento dell'interfaccia utente. In caso di errore, viene visualizzato un messaggio di errore appropriato.
+    /// </summary>
+    /// <returns></returns>
+    private async Task ReloadMessagesAsync()
+    {
+        try
+        {
+            var updated = await MessagesApi.GetMessagesAsync(LoanId);
+            await InvokeAsync(() =>
+            {
+                messages = updated;
+                StateHasChanged();
+            });
+        }
+        catch (Exception)
+        {
+            await InvokeAsync(() =>
+            {
+                error = "Impossibile aggiornare la conversazione dopo la riconnessione.";
+                StateHasChanged();
+            });
+        }
+    }
+    /// <summary>
+    ///  Aggiunge un messaggio alla lista dei messaggi visualizzati, evitando duplicati e ordinando i messaggi per data di creazione e ID.
+    /// </summary>
+    /// <param name="message"></param>
+    private void AddMessage(LoanMessageResponse message)
+    {
+        if (messages.Any(m => m.Id == message.Id)) return;
+        messages.Add(message);
+        messages = messages.OrderBy(m => m.CreatedAt).ThenBy(m => m.Id).ToList();
+    }
+    /// <summary>
+    /// Disconnette dal SignalR Hub e rimuove gli handler degli eventi quando il componente viene smontato, evitando perdite di memoria e comportamenti indesiderati.
+    /// </summary>
+    /// <returns></returns>
+    public async ValueTask DisposeAsync()
+    {
+        Chat.MessageReceived -= OnMessageReceivedAsync;
+        Chat.Reconnected -= ReloadMessagesAsync;
+        await Chat.DisposeAsync();
+    }
+}

@@ -7,32 +7,22 @@
 @inject IJSRuntime JS
 
 
-<div @ref="mapElement"
-     role="region"
-     aria-label="Mappa interattiva per la selezione della posizione"
-     style="@($"width:100%;height:{Height};")">
+<div @ref="mapElement" role="region" aria-label="Mappa interattiva per la selezione della posizione" style="@($"width:100%;height:{Height};")">
 </div>
 
 @if (Editable)
 {
     <div class="mt-2">
-        <button type="button"
-                class="btn btn-outline-primary"
-                @onclick="SelectMapCenterAsync">
-            Usa il centro della mappa
-        </button>
-
+        @* Permette di selezionare il centro della mappa *@
+        <button type="button" class="btn btn-outline-primary" @onclick="SelectMapCenterAsync"> Usa il centro della mappa </button>
+        @* Istruzione per l'utilizzo della mappa con taastiera*@
         <p class="form-text">
-            Puoi spostare la mappa usando le frecce
-            della tastiera e premere questo pulsante
-            per selezionare la posizione centrale.
+            Puoi spostare la mappa usando le frecce della tastiera e premere questo pulsante per selezionare la posizione centrale.
         </p>
 
         @if (centerSelected)
         {
-            <p role="status" class="text-success">
-                Posizione selezionata correttamente.
-            </p>
+            <p role="status" class="text-success">Posizione selezionata correttamente.</p>
         }
     </div>
 }
@@ -56,14 +46,20 @@
 
     [Parameter]
     public EventCallback<(double Latitude, double Longitude)>  OnLocationChanged { get; set; }
-    
+
     [Parameter]
     public IReadOnlyList<MapMarker> Markers { get; set; } = [];
 
     private ElementReference mapElement;
     private IJSObjectReference? module;
     private DotNetObjectReference<LocationMap>? dotNetReference;
+    private bool centerSelected;
 
+    /// <summary>
+    /// Questo metodo viene invocato dopo che il componente è stato renderizzato. Se è il primo render, carica il modulo JavaScript per la mappa, crea un riferimento a DotNetObjectReference e invoca il metodo JavaScript "initialize" per inizializzare la mappa con le coordinate fornite o con valori predefiniti. Se non è il primo render, aggiorna la mappa con le nuove coordinate e i marker.
+    /// </summary>
+    /// <param name="firstRender"></param>
+    /// <returns></returns>
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
@@ -73,37 +69,28 @@
 
             dotNetReference = DotNetObjectReference.Create(this);
 
-            await module.InvokeVoidAsync(
-                "initialize",
-                mapElement,
-                Latitude ?? 45.4642,
-                Longitude ?? 9.1900,
-                Latitude.HasValue && Longitude.HasValue,
-                Editable,
-                RadiusKm,
-                dotNetReference);
+            await module.InvokeVoidAsync( "initialize", mapElement, Latitude ?? 45.4642, Longitude ?? 9.1900, Latitude.HasValue && Longitude.HasValue, Editable, RadiusKm, dotNetReference);
         }
         else if (module is not null)
         {
-            await module.InvokeVoidAsync(
-                "update",
-                mapElement,
-                Latitude,
-                Longitude,
-                RadiusKm,
-                Markers);
+            await module.InvokeVoidAsync("update", mapElement, Latitude, Longitude, RadiusKm, Markers);
         }
     }
-
+    /// <summary>
+    /// Questo metodo viene invocato da JavaScript quando la posizione sulla mappa cambia. Riceve le coordinate di latitudine e longitudine come parametri e invoca l'evento OnLocationChanged per notificare il componente genitore della nuova posizione selezionata.
+    /// </summary>
+    /// <param name="latitude"></param>
+    /// <param name="longitude"></param>
+    /// <returns></returns>
     [JSInvokable]
-    public async Task PositionChangedFromJs(
-        double latitude,
-        double longitude)
+    public async Task PositionChangedFromJs(double latitude, double longitude)
     {
-        await OnLocationChanged.InvokeAsync(
-            (latitude, longitude));
+        await OnLocationChanged.InvokeAsync((latitude, longitude));
     }
-
+    /// <summary>
+    /// DisposeAsync viene chiamato quando il componente viene rimosso dalla UI. In questo metodo, se il modulo JavaScript è stato caricato, viene invocato un metodo JavaScript per eseguire eventuali operazioni di pulizia e quindi il modulo viene eliminato. Inoltre, il riferimento a DotNetObjectReference viene eliminato per liberare le risorse.
+    /// </summary>
+    /// <returns></returns>
     public async ValueTask DisposeAsync()
     {
         if (module is not null)
@@ -114,22 +101,22 @@
 
         dotNetReference?.Dispose();
     }
-    
-private bool centerSelected;
 
-private async Task SelectMapCenterAsync()
-{
-    if (module is null)
-        return;
 
-    centerSelected = false;
+    /// <summary>
+    /// Permette di selezionare il centro della mappa come posizione desiderata. Viene invocato un metodo JavaScript per ottenere le coordinate del centro della mappa e aggiornare le proprietà Latitude e Longitude.
+    /// </summary>
+    /// <returns></returns>
+    private async Task SelectMapCenterAsync()
+    {
+        if (module is null)
+            return;
 
-    await module.InvokeVoidAsync(
-        "selectMapCenter",
-        mapElement
-    );
+        centerSelected = false;
 
-    centerSelected = true;
-}
+        await module.InvokeVoidAsync("selectMapCenter", mapElement);
+
+        centerSelected = true;
+    }
 
 }

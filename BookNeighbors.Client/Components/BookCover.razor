@@ -1,0 +1,66 @@
+
+@using BookNeighbors.Client.Services
+@inject BookClientService BooksApi
+
+<div class="book-cover" style="width:@Width; height:@Height;">
+    @if (!string.IsNullOrWhiteSpace(currentUrl))
+    {
+        <img src="@currentUrl" alt="Copertina di @Title" loading="lazy" @onerror="HandleImageError" />
+    }
+    else
+    {
+        <div class="book-cover-placeholder" role="img" aria-label="Copertina non disponibile">
+            <i class="bi bi-book"></i>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public string Title { get; set; } = string.Empty;
+    [Parameter] public string? ThumbnailUrl { get; set; }
+    [Parameter] public string? ImageUrl { get; set; }
+    [Parameter] public string Width { get; set; } = "90px";
+    [Parameter] public string Height { get; set; } = "130px";
+    [Parameter] public bool PreferFullImage { get; set; }   
+    private string? currentUrl;
+    private string? fallbackUrl;
+    private string? previousThumbnailUrl;
+    private string? previousImageUrl;
+    private bool initialized;
+    private bool? previousPreferFullImage;
+
+    /// <summary>
+    ///  Questo metodo viene invocato quando i parametri del componente vengono impostati o modificati. Se il componente è già stato inizializzato e le URL delle immagini non sono cambiate, non fa nulla. Altrimenti, aggiorna le URL correnti e di fallback per la copertina del libro in base ai parametri forniti. Se la URL corrente è vuota, utilizza la URL di fallback. Se entrambe le URL sono uguali, imposta la URL di fallback a null per evitare duplicazioni.
+    /// </summary>
+    protected override void OnParametersSet()
+    {
+        if (initialized && previousThumbnailUrl == ThumbnailUrl && previousImageUrl == ImageUrl && previousPreferFullImage == PreferFullImage)
+            return;
+
+        initialized = true;
+        previousThumbnailUrl = ThumbnailUrl;
+        previousImageUrl = ImageUrl;
+        previousPreferFullImage = PreferFullImage;
+
+        currentUrl = BooksApi.GetCoverUrl(PreferFullImage ? ImageUrl : ThumbnailUrl);
+        fallbackUrl = BooksApi.GetCoverUrl(PreferFullImage ? ThumbnailUrl : ImageUrl);
+
+        if (string.IsNullOrWhiteSpace(currentUrl))
+        {
+            currentUrl = fallbackUrl;
+            fallbackUrl = null;
+        }
+
+        if (currentUrl == fallbackUrl)
+            fallbackUrl = null;
+    }
+
+    /// <summary>
+    /// Questo metodo viene invocato quando si verifica un errore durante il caricamento dell'immagine della copertina del libro. In tal caso, imposta la URL corrente sull'URL di fallback e annulla l'URL di fallback per evitare duplicazioni.
+    /// </summary>
+    private void HandleImageError()
+    {
+        currentUrl = fallbackUrl;
+        fallbackUrl = null;
+    }
+}

@@ -8,31 +8,58 @@ using Microsoft.AspNetCore.Components.Forms;
 
 namespace BookNeighbors.Client.Services;
 
+/// <summary>
+/// Servizio client per la gestione dei libri.
+/// Fornisce metodi per interagire con l'API BookNeighbors per operazioni sui libri, come recuperare, salvare, caricare copertine e gestire lo stato dei libri.
+/// Implementa l'interfaccia IBookClientService.
+/// </summary>
+/// <param name="httpClientFactory"></param>
 public sealed class BookClientService(
     IHttpClientFactory httpClientFactory)
 {
-    private readonly HttpClient httpClient =
-        httpClientFactory.CreateClient("BookNeighborsApi");
-
+      
+     // Client HTTP utilizzato per le richieste all'API BookNeighbors.
+    
+    private readonly HttpClient httpClient =  httpClientFactory.CreateClient("BookNeighborsApi");
+    /// <summary>
+    /// Recupera tutti i libri dell'utente autenticato.
+    /// Restituisce un elenco vuoto se l'utente non ha libri.
+    /// </summary>
+    /// <returns></returns>
     public async Task<List<BookResponse>> GetMineAsync()
     {
         return await httpClient
             .GetFromJsonAsync<List<BookResponse>>("api/book/mine") ?? [];
     }
-
+    /// <summary>
+    /// Recupera tutte le categorie disponibili.
+    /// Restituisce un elenco vuoto se non ci sono categorie.
+    /// </summary>
+    /// <returns></returns>
     public async Task<List<CategoryResponse>> GetCategoriesAsync()
     {
         return await httpClient
             .GetFromJsonAsync<List<CategoryResponse>>("api/category") ?? [];
     }
-
+    /// <summary>
+    /// Recupera le informazioni di un libro pubblico per ID, se appartiene a una libreria pubblicata e con consenso alla geolocalizzazione.
+    /// Restituisce null se il libro non esiste o non è pubblico.
+    /// </summary>
+    /// <param name="isbn"></param>
+    /// <returns></returns>
     public async Task<IsbnLookupResponse?> LookupIsbnAsync(string isbn)
     {
         return await httpClient
             .GetFromJsonAsync<IsbnLookupResponse>(
                 $"api/isbn/{Uri.EscapeDataString(isbn.Trim())}");
     }
-
+    /// <summary>
+    ///  Salva un libro. Se bookId è null, crea un nuovo libro; altrimenti aggiorna il libro esistente.
+    /// </summary>
+    /// <param name="request"></param>
+    /// <param name="bookId"></param>
+    /// <returns></returns>
+    /// <exception cref="InvalidOperationException"></exception>
     public async Task<BookResponse> SaveAsync(
         BookRequest request,
         Guid? bookId = null)
@@ -50,7 +77,14 @@ public sealed class BookClientService(
             ?? throw new InvalidOperationException(
                 "Risposta API non valida.");
     }
-
+    /// <summary>
+    ///   Carica la copertina di un libro. La copertina deve essere un'immagine JPG, PNG o WebP e non deve superare 2 MB.
+    /// </summary>
+    /// <param name="bookId"></param>
+    /// <param name="file"></param>
+    /// <returns></returns>
+    /// <exception cref="ArgumentException"></exception>
+    /// <exception cref="InvalidOperationException"></exception>
     public async Task<CoverImageResponse> UploadCoverAsync(
         Guid bookId,
         IBrowserFile file)
@@ -85,7 +119,11 @@ public sealed class BookClientService(
             ?? throw new InvalidOperationException(
                 "Risposta API non valida.");
     }
-
+    /// <summary>
+    /// Imposta un libro come non pubblicato.
+    /// </summary>
+    /// <param name="bookId"></param>
+    /// <returns></returns>
     public async Task UnpublishAsync(Guid bookId)
     {
         using var response = await httpClient.PatchAsync(
@@ -93,7 +131,11 @@ public sealed class BookClientService(
 
         await EnsureSuccessAsync(response);
     }
-
+    /// <summary>
+    ///  Elimina un libro. Restituisce un'eccezione se l'eliminazione non è consentita.
+    /// </summary>
+    /// <param name="bookId"></param>
+    /// <returns></returns>
     public async Task DeleteAsync(Guid bookId)
     {
         using var response = await httpClient.DeleteAsync(
@@ -101,7 +143,11 @@ public sealed class BookClientService(
 
         await EnsureSuccessAsync(response);
     }
-
+    /// <summary>
+    ///   Restituisce l'URL completo della copertina di un libro, se disponibile.
+    /// </summary>
+    /// <param name="imageUrl"></param>
+    /// <returns></returns>
     public string? GetCoverUrl(string? imageUrl)
     {
         if (string.IsNullOrWhiteSpace(imageUrl))
@@ -119,6 +165,12 @@ public sealed class BookClientService(
             imageUrl.TrimStart('/')).ToString();
     }
 
+    /// <summary>
+    ///  Verifica se la risposta HTTP è un successo. In caso contrario, legge il contenuto della risposta e genera un'eccezione HttpRequestException con un messaggio appropriato.
+    /// </summary>
+    /// <param name="response"></param>
+    /// <returns></returns>
+    /// <exception cref="HttpRequestException"></exception>
     private static async Task EnsureSuccessAsync(
         HttpResponseMessage response)
     {
@@ -161,5 +213,54 @@ public sealed class BookClientService(
 
         throw new HttpRequestException(
             message, null, response.StatusCode);
+    }
+
+     /// <summary>
+     ///   Recupera un libro pubblico per ID, se appartiene a una libreria pubblicata e con consenso alla geolocalizzazione.    
+     /// </summary>
+     /// <param name="bookId"></param>
+     /// <returns></returns>
+     /// <exception cref="InvalidOperationException"></exception>
+    public async Task<BookDetailsResponse> OpenPublicBookAsync(
+        Guid bookId)
+    {
+        using var response = await httpClient.PostAsync(
+            $"api/book/{bookId}/open",
+            null);
+
+        await EnsureSuccessAsync(response);
+
+        return await response.Content
+            .ReadFromJsonAsync<BookDetailsResponse>()
+            ?? throw new InvalidOperationException(
+                "Impossibile recuperare i dettagli del libro.");
+    }
+
+    /// <summary>
+    ///  Recupera i dettagli pubblici di un libro per ID, se appartiene a una libreria pubblicata e con consenso alla geolocalizzazione.
+    /// </summary>
+    /// <param name="bookId"></param>
+    /// <returns></returns>
+    public async Task<BookDetailsResponse?> GetPublicDetailsAsync(Guid bookId)
+    {
+        using var response = await httpClient.GetAsync(
+            $"api/book/public/{bookId}");
+
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            return null;
+
+        response.EnsureSuccessStatusCode();
+
+        return await response.Content
+            .ReadFromJsonAsync<BookDetailsResponse>();
+    }
+
+    public async Task RegisterViewAsync(Guid bookId)
+    {
+        using var response = await httpClient.PostAsync(
+            $"api/book/public/{bookId}/view",
+            null);
+
+        response.EnsureSuccessStatusCode();
     }
 }

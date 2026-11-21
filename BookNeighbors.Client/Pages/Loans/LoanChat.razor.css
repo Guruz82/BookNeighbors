@@ -1,0 +1,36 @@
+
+.chat-messages {
+    height: 450px;
+    overflow-y: auto;
+    background: #fafafa;
+}
+
+.chat-message {
+    background: white;
+    border: 1px solid #e5e5e5;
+    border-radius: 8px;
+    padding: 12px;
+    max-width: 85%;
+}
+
+.chat-text {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    margin-top: 5px;
+}
+
+@media (max-width: 600px) {
+    .chat-messages {
+        height: 55vh;
+    }
+
+    .chat-message {
+        max-width: 100%;
+    }
+}
+
+@media (max-width: 576px) {
+    .list-group-item > .d-flex {
+        flex-wrap: wrap;
+    }
+}

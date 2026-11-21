@@ -8,5 +8,6 @@ public record IsbnLookupResponse(
     int? PublicationYear = null,
     string? Description = null,
     string? ThumbnailUrl = null,
+    string? ImageUrl = null,
     string? Message = null
 );

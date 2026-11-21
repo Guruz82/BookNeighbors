@@ -98,8 +98,8 @@ public class CookieAuthenticationStateProvider(
     {
         try
         {
-            using var response =
-                await httpClient.GetAsync("manage/info");
+            using var response = await httpClient.GetAsync("api/account/auth-info");
+
 
             if (response.StatusCode == HttpStatusCode.Unauthorized)
                 return new AuthenticationState(unauthenticated);
@@ -113,8 +113,7 @@ public class CookieAuthenticationStateProvider(
                 return new AuthenticationState(unauthenticated);
             }
 
-            var userInfo =
-                await response.Content.ReadFromJsonAsync<UserInfo>();
+            var userInfo = await response.Content.ReadFromJsonAsync<AuthInfoResponse>();
 
             if (userInfo is null ||
                 string.IsNullOrWhiteSpace(userInfo.Email))
@@ -122,18 +121,23 @@ public class CookieAuthenticationStateProvider(
                 return new AuthenticationState(unauthenticated);
             }
 
+
             var claims = new List<Claim>
             {
+                new(ClaimTypes.NameIdentifier, userInfo.Id.ToString()),
                 new(ClaimTypes.Name, userInfo.Email),
                 new(ClaimTypes.Email, userInfo.Email)
             };
 
-            var identity = new ClaimsIdentity(
-                claims,
-                nameof(CookieAuthenticationStateProvider));
+            foreach (var role in userInfo.Roles)
+            {
+                claims.Add(new Claim(ClaimTypes.Role, role));
+            }
 
-            return new AuthenticationState(
-                new ClaimsPrincipal(identity));
+            var identity = new ClaimsIdentity(claims, nameof(CookieAuthenticationStateProvider));
+
+            return new AuthenticationState(new ClaimsPrincipal(identity));
+
         }
         catch (Exception ex)
         {
@@ -240,44 +244,44 @@ public class CookieAuthenticationStateProvider(
     }
 
     public async Task<AccountProfileResponse?> GetProfileAsync()
-{
-    using var response = await httpClient.GetAsync("api/account/me");
-
-    if (response.StatusCode == HttpStatusCode.Unauthorized)
-        return null;
-
-    response.EnsureSuccessStatusCode();
-
-    return await response.Content
-        .ReadFromJsonAsync<AccountProfileResponse>();
-}
-
-public async Task<FormResult> UpdateProfileAsync(
-    AccountProfileRequest request)
-{
-    try
     {
-        using var response = await httpClient.PutAsJsonAsync(
-            "api/account/me", request);
+        using var response = await httpClient.GetAsync("api/account/me");
 
-        if (response.IsSuccessStatusCode)
-            return new FormResult { Succeeded = true };
+        if (response.StatusCode == HttpStatusCode.Unauthorized)
+            return null;
 
-        return new FormResult
-        {
-            Succeeded = false,
-            ErrorList = await ReadErrorsAsync(response)
-        };
+        response.EnsureSuccessStatusCode();
+
+        return await response.Content
+            .ReadFromJsonAsync<AccountProfileResponse>();
     }
-    catch (Exception ex)
+
+    public async Task<FormResult> UpdateProfileAsync(
+        AccountProfileRequest request)
     {
-        logger.LogError(ex, "Errore durante l'aggiornamento del profilo");
-
-        return new FormResult
+        try
         {
-            Succeeded = false,
-            ErrorList = ["Impossibile aggiornare il profilo."]
-        };
+            using var response = await httpClient.PutAsJsonAsync(
+                "api/account/me", request);
+
+            if (response.IsSuccessStatusCode)
+                return new FormResult { Succeeded = true };
+
+            return new FormResult
+            {
+                Succeeded = false,
+                ErrorList = await ReadErrorsAsync(response)
+            };
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Errore durante l'aggiornamento del profilo");
+
+            return new FormResult
+            {
+                Succeeded = false,
+                ErrorList = ["Impossibile aggiornare il profilo."]
+            };
+        }
     }
-}
 }

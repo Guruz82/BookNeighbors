@@ -1,0 +1,209 @@
+
+@using BookNeighbors.Client.Services
+@using BookNeighbors.DTO.Notifications
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Web
+@inject NotificationClientService NotificationService
+@inject NotificationRealtimeService Realtime
+@inject NavigationManager Navigation
+@implements IAsyncDisposable
+
+@* Questo componente rappresenta la campanella delle notifiche. *@
+
+<div class="notification-container">
+    <button type="button" class="notification-button" @onclick="ToggleNotifications" aria-label="Notifiche">
+        <span class="notification-icon">🔔</span>
+
+        @if (unreadCount > 0)
+        {
+            <span class="notification-count">@unreadCount</span>
+        }
+    </button>
+
+    @if (isOpen)
+    {
+        <div class="notification-panel">
+            <div class="notification-header">
+                <strong>Notifiche</strong>
+                <button type="button" @onclick="MarkAllAsRead" disabled="@(unreadCount == 0)">Segna tutte come lette</button>
+            </div>
+
+            @if (isLoading)
+            {
+                <p>Caricamento...</p>
+            }
+            else if (notifications.Count == 0)
+            {
+                <p class="notification-empty">Non hai notifiche.</p>
+            }
+            else
+            {
+                @foreach (var notification in notifications)
+                {
+                    <button type="button" class="notification-item @(notification.IsRead ? "" : "unread")" @key="notification.Id" @onclick="() => OpenNotification(notification)">
+                        <strong>@notification.Title</strong>
+                        <span>@notification.Message</span>
+                        <small>@notification.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</small>
+                    </button>
+                }
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private List<NotificationDto> notifications = [];
+    private int unreadCount;
+    private bool isOpen;
+    private bool isLoading;
+    private bool disposed;
+
+    
+
+    /// <summary>
+    /// Carica il conteggio iniziale e avvia SignalR e il polling di fallback.
+    /// </summary>
+    
+    protected override async Task OnInitializedAsync()
+    {
+        Realtime.NotificationsChanged += OnNotificationsChangedAsync;
+
+        await RefreshCount();
+
+        try
+        {
+            await Realtime.StartAsync();
+            await RefreshCount();
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"SignalR notifiche: {ex.Message}");
+        }
+    }
+
+
+    /// <summary>
+    /// Aggiorna il conteggio delle notifiche non lette.
+    /// </summary>
+    
+    private async Task RefreshCount()
+    {
+        try
+        {
+            unreadCount = await NotificationService.GetUnreadCountAsync();
+        }
+        catch (HttpRequestException)
+        {
+            Console.Error.WriteLine("Impossibile aggiornare il conteggio delle notifiche.");
+        }
+    }
+
+
+    /// <summary>
+    /// Recupera l'elenco delle notifiche e aggiorna il contatore.
+    /// </summary>
+    
+    private async Task LoadNotificationsAsync()
+    {
+        if (disposed) return;
+
+        if (isOpen)
+        {
+            isLoading = true;
+
+            try
+            {
+                notifications = await NotificationService.GetNotificationsAsync();
+            }
+            catch (HttpRequestException)
+            {
+                Console.Error.WriteLine("Impossibile caricare le notifiche.");
+            }
+            finally
+            {
+                isLoading = false;
+            }
+        }
+
+        await RefreshCount();
+    }
+
+    /// <summary>
+    /// Apre o chiude il pannello delle notifiche.
+    /// </summary>
+    private async Task ToggleNotifications()
+    {
+        isOpen = !isOpen;
+
+        if (!isOpen) return;
+
+        await LoadNotificationsAsync();
+    }
+
+    /// <summary>
+    /// Segna una notifica come letta e apre il relativo collegamento.
+    /// </summary>
+    private async Task OpenNotification(NotificationDto notification)
+    {
+        if (!notification.IsRead)
+        {
+            await NotificationService.MarkAsReadAsync(notification.Id);
+
+            notification = notification with { IsRead = true };
+            notifications = notifications.Select(n => n.Id == notification.Id ? notification : n).ToList();
+
+            await RefreshCount();
+        }
+
+        isOpen = false;
+
+        if (!string.IsNullOrWhiteSpace(notification.Url) && notification.Url.StartsWith("/") && !notification.Url.StartsWith("//") && !notification.Url.StartsWith("/\\"))
+            Navigation.NavigateTo(notification.Url);
+    }
+
+    /// <summary>
+    /// Segna tutte le notifiche come lette.
+    /// </summary>
+    private async Task MarkAllAsRead()
+    {
+        await NotificationService.MarkAllAsReadAsync();
+
+        notifications = notifications.Select(n => n with { IsRead = true }).ToList();
+
+        await RefreshCount();
+    }
+
+    /// <summary>
+    /// Aggiorna le notifiche quando arriva un evento SignalR.
+    /// </summary>
+    private Task OnNotificationsChangedAsync()
+    {
+        if (disposed) return Task.CompletedTask;
+
+        return InvokeAsync(async () =>
+        {
+            if (disposed) return;
+
+            await LoadNotificationsAsync();
+            StateHasChanged();
+        });
+    }
+
+    
+
+    /// <summary>
+    /// Interrompe il polling, scollega gli eventi e chiude la connessione SignalR.
+    /// </summary>
+   
+    public async ValueTask DisposeAsync()
+    {
+        if (disposed) return;
+
+        disposed = true;
+
+        Realtime.NotificationsChanged -= OnNotificationsChangedAsync;
+
+        await Realtime.DisposeAsync();
+    }
+
+}

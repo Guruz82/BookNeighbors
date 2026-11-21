@@ -85,8 +85,7 @@ else
                  Height="380px" />
 
     <div class="form-text">
-        Clicca sulla mappa o trascina l'indicatore
-        per scegliere la posizione approssimativa.
+         Seleziona una posizione sulla mappa oppure spostala utilizzando le frecce della tastiera e premi «Usa il centro della mappa». Il cerchio indica il raggio di ricerca selezionato.
     </div>
 
     <ValidationMessage For="() => Input.Latitude" />
@@ -137,7 +136,7 @@ else
     private bool saved;
 
     private string? error;
-   //
+    // Carica i dati della libreria dell'utente
     protected override async Task OnInitializedAsync()
     {
         try

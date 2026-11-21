@@ -7,27 +7,33 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Mvc;
+using BookNeighbors.Api.Hubs;
+using BookNeighbors.Api.Models;
+
 
 
 
 var builder = WebApplication.CreateBuilder(args);
-
-
+// Configurazione della lettura della configurazione dell'applicazione
+builder.Services.Configure<AppOptions>(builder.Configuration.GetSection("AppOptions"));
+// Configurazione dei servizi per l'applicazione
 builder.Services.AddOpenApi();
 
-builder.Services.AddAuthentication(IdentityConstants.ApplicationScheme).AddIdentityCookies();
-builder.Services.AddAuthorizationBuilder();
-
+// Configurazione dei servizi per la gestione dei token CSRF
+builder.Services.AddSignalR();
+//   Configurazione del database PostgreSQL con NetTopologySuite
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(
         builder.Configuration.GetConnectionString("DefaultConnection"),
         npgsql => npgsql.UseNetTopologySuite()
     )
 );
+// Configurazione dei servizi Identity
 
-builder.Services.AddIdentityCore<ApplicationUser>()
-    .AddEntityFrameworkStores<ApplicationDbContext>()
-    .AddApiEndpoints();
+builder.Services.AddIdentityCore<ApplicationUser>().AddRoles<IdentityRole<Guid>>().AddEntityFrameworkStores<ApplicationDbContext>().AddApiEndpoints();
+
+
+// Configurazione dei servizi custom
 
 builder.Services.AddScoped<ILibraryService, LibraryService>();
 builder.Services.AddScoped<IGeoLocationService, GeoLocationService>();
@@ -42,21 +48,36 @@ builder.Services.AddScoped<ICoverImageService, CoverImageService>();
 builder.Services.AddScoped<ILoanService, LoanService>();
 builder.Services.AddScoped<ISearchService, SearchService>();
 builder.Services.AddScoped<IUserValidator<ApplicationUser>, ApplicationUserValidator>();
+builder.Services.AddScoped<IStatisticsService, StatisticsService>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
+builder.Services.AddScoped<ILoanMessageService, LoanMessageService>();
+builder.Services.AddScoped<IPersonalLoanStatisticsService, PersonalLoanStatisticsService>();
+builder.Services.AddScoped<INotificationRealtimePublisher, NotificationRealtimePublisher>();
+builder.Services.AddScoped<ICoverUrlResolver, CoverUrlResolver>();
+// Configurazione dei servizi per la gestione dei token CSRF
 
+builder.Services.AddAuthentication(IdentityConstants.ApplicationScheme).AddIdentityCookies();
+builder.Services.AddAuthorizationBuilder();
 builder.Services.AddControllersWithViews(options =>
 {
     options.Filters.Add(
         new AutoValidateAntiforgeryTokenAttribute());
 });
+
+var allowedOrigins = builder.Configuration.GetSection("AppOptions:Client:AllowedOrigins").Get<string[]>() ?? throw new InvalidOperationException("AppOptions:Client:AllowedOrigins non configurato.");
+
+if (allowedOrigins.Length == 0) throw new InvalidOperationException("Nessuna origine CORS configurata.");
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("Blazor", policy =>
-        policy.WithOrigins("https://localhost:7102")
+    {
+        policy.WithOrigins(allowedOrigins)
             .AllowAnyHeader()
             .AllowAnyMethod()
-            .AllowCredentials());
+            .AllowCredentials();
+    });
 });
-
 
 builder.Services.AddAntiforgery(options =>
 {
@@ -68,6 +89,47 @@ builder.Services.AddAntiforgery(options =>
 
 
 var app = builder.Build();
+
+// Configurazione iniziale del ruolo amministratore
+// utilizzata esclusivamente in sviluppo.
+if (app.Environment.IsDevelopment())
+{
+    var adminEmail = app.Configuration["BootstrapAdminEmail"];
+
+    if (!string.IsNullOrWhiteSpace(adminEmail))
+    {
+        using var scope = app.Services.CreateScope();
+
+        var roleManager = scope.ServiceProvider
+            .GetRequiredService<RoleManager<IdentityRole<Guid>>>();
+
+        var userManager = scope.ServiceProvider
+            .GetRequiredService<UserManager<ApplicationUser>>();
+
+        if (!await roleManager.RoleExistsAsync("Admin"))
+        {
+            var result = await roleManager.CreateAsync(
+                new IdentityRole<Guid>("Admin"));
+
+            if (!result.Succeeded)
+                throw new InvalidOperationException(
+                    "Impossibile creare il ruolo Admin.");
+        }
+
+        var admin = await userManager.FindByEmailAsync(adminEmail);
+
+        if (admin is not null &&
+            !await userManager.IsInRoleAsync(admin, "Admin"))
+        {
+            var result = await userManager.AddToRoleAsync(
+                admin, "Admin");
+
+            if (!result.Succeeded)
+                throw new InvalidOperationException(
+                    "Impossibile assegnare il ruolo Admin.");
+        }
+    }
+}
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
@@ -109,6 +171,9 @@ app.MapIdentityApi<ApplicationUser>();
 
 // Controller API
 app.MapControllers();
+// Endpoint SignalR per la chat dei prestiti
+app.MapHub<LoanChatHub>("/hubs/loan-chat").RequireAuthorization();
+
 
 // Logout protetto da CSRF
 app.MapPost("/logout", async (
@@ -126,5 +191,6 @@ app.MapPost("/logout", async (
 .RequireAuthorization();
 
 app.Run();
+
 
 

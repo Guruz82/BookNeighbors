@@ -4,6 +4,10 @@ namespace BookNeighbors.Api.Interfaces;
 
 public interface ISearchService
 {
-    Task<List<BookSearchResponse>> SearchBooksAsync(
-        BookSearchRequest request);
+    /// <summary>
+    /// Restituisce la lista dei libri che corrispondono ai criteri di ricerca specificati.
+    /// </summary>
+    /// <param name="request"></param>
+    /// <returns></returns>
+    Task<List<BookSearchResponse>> SearchBooksAsync(BookSearchRequest request);
 }

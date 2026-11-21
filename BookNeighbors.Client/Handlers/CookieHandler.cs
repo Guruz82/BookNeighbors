@@ -6,9 +6,16 @@ namespace BookNeighbors.Client.Identity;
 
 public class CookieHandler(IHttpClientFactory httpClientFactory) : DelegatingHandler
 {
+    /// <summary>
+    /// Gestisce le richieste HTTP aggiungendo le intestazioni necessarie per la gestione dei cookie e dei token antiforgery.
+    /// </summary>
+    /// <param name="request"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    /// <exception cref="InvalidOperationException"></exception>
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
-     // Console.WriteLine($"CookieHandler: {request.Method} {request.RequestUri}");
+        // Console.WriteLine($"CookieHandler: {request.Method} {request.RequestUri}");
 
         request.SetBrowserRequestCredentials(BrowserRequestCredentials.Include);
 
@@ -32,14 +39,16 @@ public class CookieHandler(IHttpClientFactory httpClientFactory) : DelegatingHan
 
             if (string.IsNullOrWhiteSpace(result?.Token))
                 throw new InvalidOperationException("Token antiforgery non disponibile.");
-           
+
             request.Headers.TryAddWithoutValidation("X-XSRF-TOKEN", result.Token);
-         
+
         }
 
         return await base.SendAsync(request, cancellationToken);
     }
-
+    /// <summary>
+    /// Classe interna per rappresentare il token antiforgery ottenuto dal server. Contiene una proprietà Token che memorizza il valore del token antiforgery.
+    /// </summary>
     private sealed class AntiforgeryToken
     {
         public string Token { get; set; } = string.Empty;

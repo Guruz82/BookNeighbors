@@ -5,6 +5,11 @@ namespace BookNeighbors.API.Mappers;
 
 public static class LibraryMapper
 {
+    /// <summary>
+    /// Mappa un oggetto Library in un oggetto LibraryResponse.
+    /// </summary>
+    /// <param name="library"></param>
+    /// <returns></returns>
     public static LibraryResponse ToResponse(Library library)
     {
         return new LibraryResponse(

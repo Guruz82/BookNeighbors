@@ -8,6 +8,7 @@ public record BookSearchResponse(
     string Title,
     string Author,
     string? ThumbnailUrl,
+    string? ImageUrl,
     double Latitude,
     double Longitude,
     double DistanceKm,

@@ -5,6 +5,11 @@ namespace BookNeighbors.Api.Mappers;
 
 public static class LoanMapper
 {
+    /// <summary>
+    /// Mappa un oggetto LoanRequest in un oggetto LoanResponse.    
+    /// </summary>
+    /// <param name="loan"></param>
+    /// <returns></returns>
     public static LoanResponse ToResponse(LoanRequest loan) => new(
         loan.Id,
         loan.BookId,

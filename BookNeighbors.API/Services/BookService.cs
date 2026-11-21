@@ -9,8 +9,21 @@ using Npgsql;
 
 namespace BookNeighbors.Api.Services;
 
-public class BookService(ApplicationDbContext _dbContext, ICoverImageService _coverImageService, ILogger<BookService> _logger) : IBookService
+/// <summary>
+/// Servizio per la gestione dei libri.
+/// Implementa l'interfaccia IBookService.
+/// </summary>
+/// <param name="_dbContext"></param>
+/// <param name="_coverImageService"></param>
+/// <param name="_logger"></param>
+public class BookService(ApplicationDbContext _dbContext, ICoverImageService _coverImageService, ICoverUrlResolver coverUrlResolver, ILogger<BookService> _logger) : IBookService
 {
+    /// <summary>
+    /// Recupera tutti i libri di un utente, ordinati per data di creazione decrescente.
+    /// Restituisce un elenco vuoto se l'utente non ha libri.
+    /// </summary>
+    /// <param name="userId"></param>
+    /// <returns></returns>
     public async Task<List<Book>> GetBooksByUserIdAsync(Guid userId)
     {
         return await _dbContext.Books
@@ -20,7 +33,13 @@ public class BookService(ApplicationDbContext _dbContext, ICoverImageService _co
             .OrderByDescending(b => b.CreatedAt)
             .ToListAsync();
     }
-
+    /// <summary>
+    /// Recupera un libro per ID, se appartiene all'utente.
+    /// Restituisce null se il libro non esiste o non appartiene all'utente.
+    /// </summary>
+    /// <param name="id"></param>
+    /// <param name="userId"></param>
+    /// <returns></returns>
     public async Task<Book?> GetBookByIdAsync(Guid id, Guid userId)
     {
         return await _dbContext.Books
@@ -30,8 +49,16 @@ public class BookService(ApplicationDbContext _dbContext, ICoverImageService _co
                 b.Id == id && b.Library.UserId == userId);
     }
 
-    public async Task<Book?> CreateBookAsync(
-        Guid userId, BookRequest request)
+
+    /// <summary>
+    /// Crea un libro e le sue categorie.
+    /// Restituisce null se l'utente non ha una libreria.
+    /// Lancia un'eccezione se una o più categorie non esistono.
+    /// </summary>
+    /// <param name="userId"></param>
+    /// <param name="request"></param>
+    /// <returns></returns>
+    public async Task<Book?> CreateBookAsync(Guid userId, BookRequest request)
     {
         var library = await _dbContext.Libraries
             .AsNoTracking()
@@ -65,7 +92,15 @@ public class BookService(ApplicationDbContext _dbContext, ICoverImageService _co
 
         return book;
     }
-
+    /// <summary>
+    /// Aggiorna un libro e le sue categorie.
+    /// Restituisce null se il libro non esiste o non appartiene all'utente.
+    /// Lancia un'eccezione se una o più categorie non esistono.
+    /// </summary>
+    /// <param name="id"></param>
+    /// <param name="userId"></param>
+    /// <param name="request"></param>
+    /// <returns></returns>
     public async Task<Book?> UpdateBookAsync(
         Guid id, Guid userId, BookRequest request)
     {
@@ -117,7 +152,14 @@ public class BookService(ApplicationDbContext _dbContext, ICoverImageService _co
 
         return book;
     }
-
+    /// <summary>
+    /// Valida che tutte le categorie esistano nel database.
+    /// Restituisce un array di ID univoci.
+    /// Se una o più categorie non esistono, lancia un'eccezione.
+    /// </summary>
+    /// <param name="categoryIds"></param>
+    /// <returns></returns>
+    /// <exception cref="ArgumentException"></exception>
     private async Task<Guid[]> ValidateCategoriesAsync(
         IEnumerable<Guid> categoryIds)
     {
@@ -135,6 +177,14 @@ public class BookService(ApplicationDbContext _dbContext, ICoverImageService _co
 
         return ids;
     }
+
+    /// <summary>
+    /// Elimina un libro se non ha richieste di prestito.
+    /// Restituisce un risultato che indica se l'eliminazione è avvenuta con successo.
+    /// </summary>
+    /// <param name="id"></param>
+    /// <param name="userId"></param>
+    /// <returns></returns>
     public async Task<DeleteBookResult> DeleteBookAsync(
         Guid id, Guid userId)
     {
@@ -167,6 +217,13 @@ public class BookService(ApplicationDbContext _dbContext, ICoverImageService _co
 
         return DeleteBookResult.Deleted;
     }
+
+    /// <summary>
+    /// Imposta un libro come non pubblicato.   
+    /// </summary>
+    /// <param name="id"></param>
+    /// <param name="userId"></param>
+    /// <returns></returns>
     public async Task<bool> UnpublishBookAsync(Guid id, Guid userId)
     {
         var book = await _dbContext.Books
@@ -183,7 +240,17 @@ public class BookService(ApplicationDbContext _dbContext, ICoverImageService _co
 
         return true;
     }
-
+    /// <summary>
+    /// Carica la copertina di un libro e genera il thumbnail.
+    /// Se il libro aveva già una copertina, la sostituisce.
+    /// Se il salvataggio del DB fallisce, elimina i nuovi file.
+    /// Se il salvataggio del DB ha successo, elimina i vecchi file.
+    /// </summary>
+    /// <param name="id"></param>
+    /// <param name="userId"></param>
+    /// <param name="file"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
     public async Task<CoverImageResponse?> UploadCoverAsync(Guid id, Guid userId, IFormFile file, CancellationToken cancellationToken = default)
     {
         var book = await _dbContext.Books
@@ -223,6 +290,14 @@ public class BookService(ApplicationDbContext _dbContext, ICoverImageService _co
         return result;
     }
 
+    /// <summary>
+    /// Elimina la copertina di un libro, se esiste.
+    /// Restituisce true se l'eliminazione è avvenuta con successo.
+    /// Restituisce false se il libro non esiste o non appartiene all'utente.
+    /// </summary>
+    /// <param name="id"></param>
+    /// <param name="userId"></param>
+    /// <returns></returns>
     public async Task<bool> DeleteCoverAsync(Guid id, Guid userId)
     {
         var book = await _dbContext.Books
@@ -245,8 +320,13 @@ public class BookService(ApplicationDbContext _dbContext, ICoverImageService _co
 
         return true;
     }
-
-    private void TryDeleteFiles( Guid bookId, string? imageUrl, string? thumbnailUrl)
+    /// <summary>
+    ///     Elimina i file della copertina e del thumbnail, se esistono.
+    /// </summary>
+    /// <param name="bookId"></param>
+    /// <param name="imageUrl"></param>
+    /// <param name="thumbnailUrl"></param>
+    private void TryDeleteFiles(Guid bookId, string? imageUrl, string? thumbnailUrl)
     {
         try
         {
@@ -267,4 +347,128 @@ public class BookService(ApplicationDbContext _dbContext, ICoverImageService _co
         }
     }
 
+    /// <summary>
+    ///  Recupera un libro pubblico per ID, se appartiene a una libreria pubblicata e con consenso alla geolocalizzazione.
+    ///  Registra l'apertura del libro.
+    ///  Restituisce null se il libro non esiste o non è pubblico.  
+    /// </summary>
+    /// <param name="bookId"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    public async Task<BookDetailsResponse?> OpenPublicBookAsync(Guid bookId, CancellationToken cancellationToken = default)
+    {
+        var book = await GetPublicDetailsCoreAsync(bookId, cancellationToken);
+
+        if (book is null)
+            return null;
+
+        // Registra l'apertura del libro.
+        var view = new BookView
+        {
+            Id = Guid.NewGuid(),
+            BookId = bookId,
+            ViewedAt = DateTime.UtcNow
+        };
+
+        _dbContext.BookViews.Add(view);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        return book;
+    }
+
+
+    /// <summary>
+    ///  Restituisce i dettagli pubblici di un libro per ID, se appartiene a una libreria pubblicata e con consenso alla geolocalizzazione.
+    ///  Restituisce null se il libro non esiste o non è pubblico.
+    /// </summary>
+    /// <param name="bookId"></param>
+    /// <returns></returns>
+    public async Task<BookDetailsResponse?> GetPublicDetailsAsync(Guid bookId)
+    {
+        return await GetPublicDetailsCoreAsync(bookId, CancellationToken.None);
+    }
+
+    /// <summary>
+    ///  Restituisce i dettagli pubblici di un libro per ID, se appartiene a una libreria pubblicata e con consenso alla geolocalizzazione.
+    ///  Restituisce null se il libro non esiste o non è pubblico.
+    /// </summary>
+    /// <param name="bookId"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    private async Task<BookDetailsResponse?> GetPublicDetailsCoreAsync(Guid bookId, CancellationToken cancellationToken)
+    {
+        // Sono consultabili soltanto i libri pubblici appartenenti a librerie pubblicate.
+        var book = await _dbContext.Books
+            .AsNoTracking()
+            .Where(b => b.Id == bookId && b.IsPublished && b.Library.IsPublished && b.Library.LocationConsent)
+            .Select(b => new
+            {
+                b.Id,
+                b.Title,
+                b.Author,
+                b.Description,
+                b.ISBN,
+                b.PublicationYear,
+                b.ImageUrl,
+                b.ThumbnailUrl,
+                LibraryName = b.Library.Name,
+                b.Library.City,
+                IsLoaned = _dbContext.LoanRequests.Any(l => l.BookId == b.Id && l.Status.Name == "Accepted")
+            })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (book is null)
+            return null;
+
+        return new BookDetailsResponse(
+            book.Id,
+            book.Title,
+            book.Author,
+            book.Description,
+            book.ISBN,
+            book.PublicationYear,
+            coverUrlResolver.Resolve(book.ImageUrl),
+            coverUrlResolver.Resolve(book.ThumbnailUrl),
+            book.LibraryName,
+            book.City,
+            book.IsLoaned
+        );
+    }
+    /// <summary>
+    /// Registra la visualizzazione di un libro pubblico.
+    /// </summary>
+    /// <param name="bookId"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    public async Task<bool> RegisterPublicViewAsync(
+        Guid bookId,
+        CancellationToken cancellationToken = default)
+    {
+        // Verifica che il libro sia pubblicamente consultabile.
+        var exists = await _dbContext.Books
+            .AsNoTracking()
+            .AnyAsync(b =>
+                b.Id == bookId &&
+                b.IsPublished &&
+                b.Library.IsPublished &&
+                b.Library.LocationConsent,
+                cancellationToken);
+
+        if (!exists)
+            return false;
+
+        // Registra la visualizzazione.
+        var view = new BookView
+        {
+            Id = Guid.NewGuid(),
+            BookId = bookId,
+            ViewedAt = DateTime.UtcNow
+        };
+
+        _dbContext.BookViews.Add(view);
+
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        return true;
+    }
 }

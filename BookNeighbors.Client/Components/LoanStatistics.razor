@@ -1,0 +1,125 @@
+
+@using BookNeighbors.Client.Services
+@using BookNeighbors.DTO.Statistics
+@using Microsoft.JSInterop
+@inject PersonalLoanStatisticsClientService StatisticsApi
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+@if (loading)
+{
+    <p role="status">Caricamento statistiche...</p>
+}
+else if (!string.IsNullOrWhiteSpace(error))
+{
+    <div class="alert alert-danger" role="alert">@error</div>
+}
+else if (statistics is not null)
+{
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-lg-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="text-muted small">Libri prestati</div>
+                    <div class="fs-2 fw-semibold">@statistics.LentBooks</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-6 col-lg-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="text-muted small">Libri ricevuti</div>
+                    <div class="fs-2 fw-semibold">@statistics.BorrowedBooks</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-6 col-lg-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="text-muted small">Prestiti attivi</div>
+                    <div class="fs-2 fw-semibold">@statistics.ActiveLoans</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-6 col-lg-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="text-muted small">Prestiti conclusi</div>
+                    <div class="fs-2 fw-semibold">@statistics.CompletedLoans</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <h3 class="h5 mb-3">Richieste negli ultimi sei mesi</h3>
+
+    <div class="loan-statistics-chart">
+        <canvas @ref="chartCanvas" role="img" aria-label="Andamento mensile delle richieste di prestito inviate e ricevute"></canvas>
+    </div>
+
+    <p class="text-muted small mt-2">Il grafico comprende tutte le richieste, indipendentemente dal loro stato, raggruppate per data di creazione.</p>
+}
+
+@code {
+    private PersonalLoanStatisticsResponse? statistics;
+    private ElementReference chartCanvas;
+    private IJSObjectReference? chartModule;
+    private bool loading = true;
+    private bool chartRendered;
+    private string? error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            statistics = await StatisticsApi.GetAsync();
+        }
+        catch (Exception ex)
+        {
+            error = $"Impossibile caricare le statistiche: {ex.Message}";
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (loading || statistics is null || chartRendered)
+            return;
+
+        chartRendered = true;
+
+        try
+        {
+            chartModule ??= await JS.InvokeAsync<IJSObjectReference>("import", "./js/loanStatisticsCharts.js");
+
+            await chartModule.InvokeVoidAsync("renderLoanStatisticsChart", chartCanvas, statistics.Months.Select(m => m.Month).ToArray(), statistics.Months.Select(m => m.SentRequests).ToArray(), statistics.Months.Select(m => m.ReceivedRequests).ToArray());
+        }
+        catch (JSException ex)
+        {
+            Console.Error.WriteLine($"Errore grafico prestiti: {ex.Message}");
+            error = "Impossibile visualizzare il grafico.";
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (chartModule is null)
+            return;
+
+        try
+        {
+            await chartModule.InvokeVoidAsync("disposeLoanStatisticsChart");
+            await chartModule.DisposeAsync();
+        }
+        catch (JSDisconnectedException)
+        {
+        }
+    }
+}

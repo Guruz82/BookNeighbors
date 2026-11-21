@@ -1,9 +1,11 @@
 using BookNeighbors.Api.Models.Identity;
-
-
 using NetTopologySuite.Geometries;
- namespace BookNeighbors.Api.Models;
 
+namespace BookNeighbors.Api.Models;
+
+/// <summary>
+/// Rappresenta una biblioteca di libri.
+/// </summary>
 public class Library
 {
     public Guid Id { get; set; }

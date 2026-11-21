@@ -6,6 +6,10 @@
 @using BookNeighbors.Client.Interfaces
 @using BookNeighbors.DTO.Search
 @using BookNeighbors.DTO.Categories
+@using BookNeighbors.DTO.Books
+ 
+@inject BrowserLocationService BrowserLocation
+@inject BookClientService BooksApi
 @inject ILoanClientService LoansApi
 @inject SearchClientService SearchApi
 
@@ -88,6 +92,19 @@
     </div>
 
     <div class="col-lg-8">
+        <button type="button"
+        class="btn btn-outline-primary mb-3"
+        disabled="@isLocating"
+        @onclick="UseBrowserPositionAsync">
+                @(isLocating ? "Rilevamento..." : "Usa la mia posizione")
+            </button>
+
+            @if (!string.IsNullOrWhiteSpace(locationMessage))
+            {
+                <p role="status" class="form-text">
+                    @locationMessage
+                </p>
+            }
         @* Componente riutilizzabile per la mappa interattiva *@
         <LocationMap Latitude="search.Latitude"
                      Longitude="search.Longitude"
@@ -97,8 +114,7 @@
                      Height="450px" />
 
         <div class="form-text mt-2">
-            Clicca sulla mappa per spostare il centro
-            della ricerca. Il cerchio indica il raggio selezionato.
+            Seleziona una posizione sulla mappa oppure spostala utilizzando le frecce della tastiera e premi «Usa il centro della mappa». Il cerchio indica il raggio di ricerca selezionato.
         </div>
     </div>
 </div>
@@ -135,59 +151,66 @@
     else
     {
         <div class="row g-3">
+            @if (!string.IsNullOrWhiteSpace(detailsError))
+            {
+                <div class="alert alert-danger" role="alert">
+                    @detailsError
+                </div>
+            }
             @foreach (var book in results)
             {
-                <div class="col-md-6">
-                    <div class="card h-100">
-                        <div class="card-body">
+                
+<div class="col-md-6" @key="book.Id">
+    <div class="card h-100">
+        <div class="card-body d-flex gap-3">
+            <BookCover Title="@book.Title" ThumbnailUrl="@book.ThumbnailUrl" ImageUrl="@book.ImageUrl" />
 
-                            <h2 class="card-title h5">
-                                @book.Title
-                            </h2>
+            <div class="flex-grow-1">
+                <h2 class="card-title h5">@book.Title</h2>
 
-                            <p class="card-text">
-                                <strong>Autore:</strong>
-                                @book.Author
-                            </p>
+                <p class="card-text mb-1">
+                    <strong>Autore:</strong> @book.Author
+                </p>
 
-                            <p class="card-text">
-                                <strong>Libreria:</strong>
-                                @book.LibraryName
-                            </p>
+                <p class="card-text mb-1">
+                    <strong>Libreria:</strong> @book.LibraryName
+                </p>
 
-                            @if (!string.IsNullOrWhiteSpace(book.City))
-                            {
-                                <p class="card-text">
-                                    <strong>Città:</strong>
-                                    @book.City
-                                </p>
-                            }
+                @if (!string.IsNullOrWhiteSpace(book.City))
+                {
+                    <p class="card-text mb-1">
+                        <strong>Città:</strong> @book.City
+                    </p>
+                }
 
-                            <p class="card-text">
-                                <strong>Distanza:</strong>
-                                @book.DistanceKm.ToString("0.00") km
-                            </p>
+                <p class="card-text mb-2">
+                    <strong>Distanza:</strong> @book.DistanceKm.ToString("0.00") km
+                </p>
 
-                            @if (book.IsLoaned)
-                                {
-                                    <span class="badge bg-warning text-dark">
-                                        In prestito
-                                    </span>
-                                }
-                                else
-                                {
-                                    <span class="badge bg-success">
-                                        Disponibile
-                                    </span>
-                                }
-                            <button class="btn btn-outline-primary"
-                                disabled="@(book.IsLoaned || isRequesting)"
-                                @onclick="() => RequestLoanAsync(book.Id)">
-                            @(book.IsLoaned ? "Non disponibile" : "Richiedi in prestito")
-                        </button>
-                        </div>
-                    </div>
+                <div class="mb-3">
+                    @if (book.IsLoaned)
+                    {
+                        <span class="badge bg-warning text-dark">In prestito</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-success">Disponibile</span>
+                    }
                 </div>
+                <div class="d-flex flex-wrap gap-2 mt-3">
+                    <NavLink class="btn btn-sm btn-outline-secondary" href="@($"/libri/{book.Id}")">
+                        Dettaglio
+                    </NavLink>
+
+                    <button type="button" class="btn btn-sm btn-outline-primary" disabled="@(book.IsLoaned || isRequesting)" @onclick="() => RequestLoanAsync(book.Id)">
+                        @(book.IsLoaned ? "Non disponibile" : "Richiedi in prestito")
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
             }
         </div>
     }
@@ -213,7 +236,11 @@
     private string? loanError;
     private string? error;
     private string? categoryError;
-
+    private bool isLocating;
+    private string? locationMessage;
+    private BookDetailsResponse? openedBook;
+    private Guid? openingBookId;
+    private string? detailsError;
     protected override async Task OnInitializedAsync()
     {
         try
@@ -236,9 +263,12 @@
 
     private async Task SearchBooksAsync()
     {
+       
         if (isSearching)
             return;
-
+        
+        openedBook = null;
+        detailsError = null;
         isSearching = true;
         error = null;
         hasSearched = false;
@@ -275,28 +305,101 @@
 
 
 
-private async Task RequestLoanAsync(Guid bookId)
+    private async Task RequestLoanAsync(Guid bookId)
+    {
+        if (isRequesting)
+            return;
+
+        isRequesting = true;
+        loanMessage = null;
+        loanError = null;
+
+        try
+        {
+            await LoansApi.RequestAsync(bookId);
+
+            loanMessage = "Richiesta di prestito inviata correttamente.";
+        }
+        catch (Exception ex)
+        {
+            loanError = ex.Message;
+        }
+        finally
+        {
+            isRequesting = false;
+        }
+    }
+
+
+// Mostra o nasconde i dettagli di un libro.
+private async Task ToggleBookDetailsAsync(Guid bookId)
 {
-    if (isRequesting)
+    if (openingBookId.HasValue)
         return;
 
-    isRequesting = true;
-    loanMessage = null;
-    loanError = null;
+    detailsError = null;
+
+    // Se il libro è già aperto, chiude il dettaglio
+    // senza registrare una nuova visualizzazione.
+    if (openedBook?.Id == bookId)
+    {
+        openedBook = null;
+        return;
+    }
+
+    openingBookId = bookId;
+    openedBook = null;
 
     try
     {
-        await LoansApi.RequestAsync(bookId);
-
-        loanMessage = "Richiesta di prestito inviata correttamente.";
+        // La chiamata API registra anche la visualizzazione.
+        openedBook = await BooksApi.OpenPublicBookAsync(bookId);
     }
-    catch (Exception ex)
+    catch (Exception)
     {
-        loanError = ex.Message;
+        detailsError = "Impossibile caricare i dettagli del libro.";
     }
     finally
     {
-        isRequesting = false;
+        openingBookId = null;
+    }
+}
+
+
+private async Task UseBrowserPositionAsync()
+{
+    if (isLocating)
+        return;
+
+    isLocating = true;
+    locationMessage = null;
+
+    try
+    {
+        var position =
+            await BrowserLocation.GetCurrentPositionAsync();
+
+        SetSearchPosition((
+            position.Latitude,
+            position.Longitude
+        ));
+
+        // I risultati precedenti non corrispondono
+        // necessariamente alla nuova posizione.
+        hasSearched = false;
+        markers = [];
+
+        locationMessage = "Posizione rilevata. Puoi avviare la ricerca.";
+    }
+    catch (Exception)
+    {
+        locationMessage =
+            "Impossibile rilevare la posizione. " +
+            "Puoi selezionarla manualmente sulla mappa.";
+    }
+    finally
+    {
+        isLocating = false;
     }
 }
 }

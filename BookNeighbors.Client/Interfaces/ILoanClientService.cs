@@ -4,11 +4,29 @@ namespace BookNeighbors.Client.Interfaces;
 
 public interface ILoanClientService
 {
-    
 
-     public  Task<List<LoanResponse>> GetSentAsync();
-      public  Task<List<LoanResponse>> GetReceivedAsync();
-      public  Task<LoanResponse> RequestAsync(Guid bookId);
-      public  Task<LoanResponse> ChangeStatusAsync(Guid loanId, string action);
+    /// <summary>
+    /// Gets the list of loans sent by the current user.
+    /// </summary>
+    /// <returns></returns>
+    public Task<List<LoanResponse>> GetSentAsync();
+    /// <summary>
+    /// Gets the list of loans received by the current user.
+    /// </summary>
+    /// <returns></returns>
+    public Task<List<LoanResponse>> GetReceivedAsync();
+    /// <summary>
+    /// Requests a loan for a book with the given ID.
+    /// </summary>
+    /// <param name="bookId"></param>
+    /// <returns></returns>
+    public Task<LoanResponse> RequestAsync(Guid bookId);
+    /// <summary>
+    /// Changes the status of a loan with the given ID to the specified action (e.g., accept, reject, return).
+    /// </summary>
+    /// <param name="loanId"></param>
+    /// <param name="action"></param>
+    /// <returns></returns>
+    public Task<LoanResponse> ChangeStatusAsync(Guid loanId, string action);
 
 }

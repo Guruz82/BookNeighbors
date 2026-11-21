@@ -1,28 +1,32 @@
 ﻿
 @inherits LayoutComponentBase
 @using Microsoft.AspNetCore.Components.Authorization
+@using BookNeighbors.Client.Components
 
+@* Layout principale della pagina *@
 <div class="page">
+    @*sidebar*@
     <div class="sidebar">
         <NavMenu />
     </div>
 
     <main>
+      
         <div class="top-row px-4">
-
+            @* Barra di navigazione superiore *@
             <AuthorizeView>
+                
                 <Authorized Context="authState">
                     <span class="me-3">
                         @authState.User.Identity?.Name
                     </span>
-
-                    <a href="/profile" class="me-3">
-                        Profilo
-                    </a>
+                   <NotificationBell />
+                
 
                     <a href="/logout">
                         Esci
                     </a>
+                    
                 </Authorized>
 
                 <NotAuthorized>
@@ -39,6 +43,7 @@
         </div>
 
         <article class="content px-4">
+            @* Contenuto principale della pagina *@
             @Body
         </article>
     </main>
