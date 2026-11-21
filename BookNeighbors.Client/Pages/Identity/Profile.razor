@@ -1,4 +1,4 @@
-
+@* Mostra il profilo dell'utente *@
 @page "/profile"
 @using BookNeighbors.Client.Interfaces
 @using BookNeighbors.DTO.Account
@@ -8,13 +8,15 @@
 <PageTitle>Il mio profilo - Book Neighbors</PageTitle>
 
 <h1>Il mio profilo</h1>
-
+@* Mostra le informazioni del profilo dell'utente *@
 @if (isLoading)
 {
+    @* Mostra un messaggio di caricamento *@
     <p>Caricamento profilo...</p>
 }
 else if (unauthorized)
 {
+    @* Mostra un messaggio di autorizzazione non concessa *@
     <div class="alert alert-warning">
         Devi effettuare il <a href="/login">login</a>
         per visualizzare il profilo.
@@ -22,39 +24,40 @@ else if (unauthorized)
 }
 else if (!profileLoaded)
 {
-    <div class="alert alert-danger">
+    @* Mostra un messaggio di errore nel caricamento del profilo *@
+    <div class="alert alert-danger"  role="alert">
         Impossibile caricare il profilo.
     </div>
 }
 else
 {
+    @* Mostra le informazioni del profilo dell'utente *@
     <p>
         <strong>Email:</strong> @email
     </p>
 
     @if (saved)
     {
-        <div class="alert alert-success">
+        @* Mostra un messaggio di successo dopo il salvataggio del profilo *@
+        <div class="alert alert-success"  role="status">
             Profilo aggiornato correttamente.
         </div>
     }
-
+    @* Mostra i messaggi di errore *@
     @foreach (var error in errors)
     {
-        <div class="alert alert-danger">
+        <div class="alert alert-danger"  role="alert">
             @error
         </div>
     }
-
-    <EditForm Model="@Input"
-              OnValidSubmit="SaveProfileAsync"
-              Context="profileFormContext">
+    @* Mostra il form per la modifica del profilo *@
+    <EditForm Model="@Input" OnValidSubmit="SaveProfileAsync" Context="profileFormContext">
 
         <DataAnnotationsValidator />
-
+        @* Campo Nickname *@
         <div class="mb-3">
             <label for="displayName" class="form-label">
-                Nome visualizzato
+                Nickname
             </label>
             <InputText id="displayName"
                        class="form-control"
@@ -62,26 +65,7 @@ else
             <ValidationMessage For="() => Input.DisplayName" />
         </div>
 
-        <div class="mb-3">
-            <label for="firstName" class="form-label">
-                Nome
-            </label>
-            <InputText id="firstName"
-                       class="form-control"
-                       @bind-Value="Input.FirstName" />
-            <ValidationMessage For="() => Input.FirstName" />
-        </div>
-
-        <div class="mb-3">
-            <label for="lastName" class="form-label">
-                Cognome
-            </label>
-            <InputText id="lastName"
-                       class="form-control"
-                       @bind-Value="Input.LastName" />
-            <ValidationMessage For="() => Input.LastName" />
-        </div>
-
+        @* Campo Biografia *@
         <div class="mb-3">
             <label for="bio" class="form-label">
                 Biografia
@@ -92,7 +76,7 @@ else
                            @bind-Value="Input.Bio" />
             <ValidationMessage For="() => Input.Bio" />
         </div>
-
+        @* pulsante salvataggio*@
         <button type="submit"
                 class="btn btn-primary"
                 disabled="@isSaving">
@@ -112,7 +96,7 @@ else
     private bool profileLoaded;
     private bool unauthorized;
     private bool saved;
-
+    // Carica il profilo dell'utente
     protected override async Task OnInitializedAsync()
     {
         try
@@ -130,8 +114,7 @@ else
             Input = new AccountProfileRequest
             {
                 DisplayName = profile.DisplayName,
-                FirstName = profile.FirstName,
-                LastName = profile.LastName,
+    
                 Bio = profile.Bio
             };
 
@@ -146,7 +129,7 @@ else
             isLoading = false;
         }
     }
-
+    // Salva le modifiche al profilo dell'utente
     private async Task SaveProfileAsync()
     {
         if (isSaving)

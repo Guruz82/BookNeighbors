@@ -10,18 +10,20 @@
 <PageTitle>Registrazione - Book Neighbors</PageTitle>
 
 <h1>Registrazione</h1>
-
+<!-- Form per la registrazione dell'utente -->
 <AuthorizeView>
+    <!-- Mostra un messaggio se l'utente è già autenticato -->
     <Authorized Context="authState">
-        <div class="alert alert-success">
+        <div class="alert alert-success" role="status">
             Sei già autenticato come @authState.User.Identity?.Name.
         </div>
     </Authorized>
 
     <NotAuthorized>
+        <!-- Mostra il form di registrazione se l'utente non è autenticato -->
         @if (formResult.Succeeded)
         {
-            <div class="alert alert-success">
+            <div class="alert alert-success" role="status">
                 Registrazione completata.
                 Ora puoi <a href="/login">accedere</a>.
             </div>
@@ -30,7 +32,7 @@
         {
             @foreach (var error in formResult.ErrorList)
             {
-                <div class="alert alert-danger">@error</div>
+                <div class="alert alert-danger"  role="alert">@error</div>
             }
 
             <EditForm Model="@Input" OnValidSubmit="RegisterUserAsync" FormName="register" Context="editFormContext">
@@ -48,28 +50,14 @@
                 </div>
 
                 <div class="mb-3">
-                    <label for="displayName">Nome visualizzato</label>
+                    <label for="displayName">Nickname</label>
                     <InputText id="displayName"
                                class="form-control"
                                @bind-Value="Input.DisplayName" />
                     <ValidationMessage For="() => Input.DisplayName" />
                 </div>
 
-                <div class="mb-3">
-                    <label for="firstName">Nome</label>
-                    <InputText id="firstName"
-                               class="form-control"
-                               @bind-Value="Input.FirstName" />
-                    <ValidationMessage For="() => Input.FirstName" />
-                </div>
-
-                <div class="mb-3">
-                    <label for="lastName">Cognome</label>
-                    <InputText id="lastName"
-                               class="form-control"
-                               @bind-Value="Input.LastName" />
-                    <ValidationMessage For="() => Input.LastName" />
-                </div>
+                 
 
                 <div class="mb-3">
                     <label for="password">Password</label>
@@ -120,7 +108,7 @@
 
     private string ConfirmPassword = string.Empty;
     private bool isSubmitting;
-
+    // Gestisce la registrazione dell'utente
     private async Task RegisterUserAsync()
     {
         if (Input.Password != ConfirmPassword)

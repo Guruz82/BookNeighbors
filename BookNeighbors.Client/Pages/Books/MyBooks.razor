@@ -23,12 +23,12 @@
 
 @if (!string.IsNullOrWhiteSpace(message))
 {
-    <div class="alert alert-success">@message</div>
+    <div class="alert alert-success" role="status">@message</div>
 }
 
 @if (!string.IsNullOrWhiteSpace(error))
 {
-    <div class="alert alert-danger">@error</div>
+    <div class="alert alert-danger"  role="alert">@error</div>
 }
 
 @if (isLoading)
@@ -55,10 +55,10 @@ else
                     <DataAnnotationsValidator />
 
                     <div class="mb-3">
-                        <label class="form-label">ISBN</label>
+                        <label for="isbn" class="form-label">ISBN</label>
 
                         <div class="input-group">
-                            <InputText class="form-control"
+                            <InputText id="isbn" class="form-control"
                                        @bind-Value="Input.ISBN" />
 
                             <button type="button"
@@ -73,50 +73,51 @@ else
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label">Titolo</label>
+                        <label for="title" class="form-label">Titolo</label>
 
-                        <InputText class="form-control"
+                        <InputText id="title" class="form-control"
                                    @bind-Value="Input.Title" />
 
                         <ValidationMessage For="() => Input.Title" />
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label">Autore</label>
+                        <label for="author" class="form-label">Autore</label>
 
-                        <InputText class="form-control"
+                        <InputText id="author" class="form-control"
                                    @bind-Value="Input.Author" />
 
                         <ValidationMessage For="() => Input.Author" />
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label">Anno di pubblicazione</label>
+                        <label for="publicationYear" class="form-label">Anno di pubblicazione</label>
 
-                        <InputNumber class="form-control"
+                        <InputNumber id="publicationYear" class="form-control"
                                      @bind-Value="Input.PublicationYear" />
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label">Descrizione</label>
+                        <label for="description" class="form-label">Descrizione</label>
 
-                        <InputTextArea class="form-control"
+                        <InputTextArea id="description" class="form-control"
                                        rows="4"
                                        @bind-Value="Input.Description" />
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label">Categorie</label>
+                        
 
-                        <div class="border rounded p-3"
-                             style="max-height:220px;overflow-y:auto;">
-
+                        <fieldset class="border rounded p-3">
+                                <legend class="fs-6">Categorie</legend>
                             @foreach (var category in categories)
                             {
                                 <div class="form-check" @key="category.Id">
                                     <input class="form-check-input"
                                            type="checkbox"
                                            id="@($"cat-{category.Id}")"
+                                           title="@category.Name"
+                                           aria-label="@category.Name"
                                            checked="@Input.CategoryIds.Contains(category.Id)"
                                            @onchange="e => SetCategory(
                                                category.Id,
@@ -128,7 +129,7 @@ else
                                     </label>
                                 </div>
                             }
-                        </div>
+                        </fieldset>
                     </div>
 
                     @if (!string.IsNullOrWhiteSpace(Input.ThumbnailUrl))
@@ -141,9 +142,9 @@ else
                     }
 
                     <div class="mb-3">
-                        <label class="form-label">Copertina</label>
+                        <label for="cover" class="form-label">Copertina</label>
 
-                        <InputFile OnChange="OnCoverChanged"
+                        <InputFile id="cover" OnChange="OnCoverChanged"
                                    accept="image/jpeg,image/png,image/webp"
                                    class="form-control" />
 
@@ -212,7 +213,7 @@ else
                             }
 
                             <div class="flex-grow-1">
-                                <h5>@book.Title</h5>
+                                <h2 class="h5">@book.Title</h2>
 
                                 <p class="mb-1">@book.Author</p>
 

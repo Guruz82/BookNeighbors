@@ -23,7 +23,7 @@ else if (unauthorized)
 }
 else if (loadFailed)
 {
-    <div class="alert alert-danger">
+    <div class="alert alert-danger"  role="alert">
         Impossibile caricare la libreria.
     </div>
 }
@@ -37,16 +37,16 @@ else
 
     @if (saved)
     {
-        <div class="alert alert-success">
+        <div class="alert alert-success"  role="status">
             Libreria salvata correttamente.
         </div>
     }
 
     @if (!string.IsNullOrWhiteSpace(error))
     {
-        <div class="alert alert-danger">@error</div>
+        <div class="alert alert-danger"  role="alert"> @error</div>
     }
-
+    <!-- Form per la creazione o modifica della libreria -->
     <EditForm Model="@Input"
               OnValidSubmit="SaveLibraryAsync"
               Context="libraryFormContext">
@@ -54,30 +54,32 @@ else
         <DataAnnotationsValidator />
 
         <div class="mb-3">
-            <label class="form-label">Nome libreria</label>
-            <InputText class="form-control"
+            <label for="libraryName" class="form-label">Nome libreria</label>
+            <InputText id="libraryName" class="form-control"
                        @bind-Value="Input.Name" />
             <ValidationMessage For="() => Input.Name" />
         </div>
 
         <div class="mb-3">
-            <label class="form-label">Città</label>
-            <InputText class="form-control"
+            <label for="city" class="form-label">Città</label>
+            <InputText id="city" class="form-control"
                        @bind-Value="Input.City" />
             <ValidationMessage For="() => Input.City" />
         </div>
 
         <div class="mb-3">
-            <label class="form-label">Zona</label>
-            <InputText class="form-control"
+            <label for="areaName" class="form-label">Zona</label>
+            <InputText id="areaName" class="form-control"
                        @bind-Value="Input.AreaName" />
             <ValidationMessage For="() => Input.AreaName" />
         </div>
 
         <div class="mb-3">
-    <label class="form-label">Posizione della libreria</label>
-
-    <LocationMap Latitude="Input.Latitude"
+         
+          <fieldset class="border rounded p-3">
+                                <legend class="fs-6">Posizione della libreria</legend>   
+    <!-- Componente riutilizzabile per la mappa interattiva -->
+    <LocationMap   Latitude="Input.Latitude"
                  Longitude="Input.Longitude"
                  OnLocationChanged="SetLibraryPosition"
                  Height="380px" />
@@ -89,6 +91,7 @@ else
 
     <ValidationMessage For="() => Input.Latitude" />
     <ValidationMessage For="() => Input.Longitude" />
+    </fieldset>
 </div>
 
         <div class="form-check mb-3">
@@ -134,7 +137,7 @@ else
     private bool saved;
 
     private string? error;
-
+   //
     protected override async Task OnInitializedAsync()
     {
         try
@@ -171,7 +174,7 @@ else
             isLoading = false;
         }
     }
-
+    // Salva la libreria
     private async Task SaveLibraryAsync()
     {
         if (isSaving)
@@ -191,6 +194,7 @@ else
 
         try
         {
+            // Salva la libreria tramite il servizio LibraryApi
             await LibraryApi.SaveAsync(Input, exists);
 
             exists = true;
@@ -210,7 +214,7 @@ else
             isSaving = false;
         }
     }
-
+    // Imposta la posizione della libreria in base alla selezione sulla mappa
     private void SetLibraryPosition(
     (double Latitude, double Longitude) position)
     {

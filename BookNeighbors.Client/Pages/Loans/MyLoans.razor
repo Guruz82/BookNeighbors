@@ -10,17 +10,17 @@
 <PageTitle>Prestiti - Book Neighbors</PageTitle>
 
 <h1>Prestiti</h1>
-
+<!-- Mostra messaggi di stato e errori -->
 @if (!string.IsNullOrWhiteSpace(message))
 {
-    <div class="alert alert-success">@message</div>
+    <div class="alert alert-success" role="status">@message</div>
 }
-
+ 
 @if (!string.IsNullOrWhiteSpace(error))
 {
-    <div class="alert alert-danger">@error</div>
+    <div class="alert alert-danger"  role="alert">@error</div>
 }
-
+<!-- Mostra la lista dei prestiti inviati e ricevuti -->
 @if (isLoading)
 {
     <p>Caricamento prestiti...</p>
@@ -35,6 +35,7 @@ else if (unauthorized)
 }
 else
 {
+    <!-- Mostra le richieste inviate -->
     <h2 class="mt-4">Richieste inviate</h2>
 
     @if (sent.Count == 0)
@@ -44,6 +45,7 @@ else
     else
     {
         <div class="list-group mb-4">
+            <!-- Mostra ogni richiesta inviata con lo stato e la possibilità di annullarla -->
             @foreach (var loan in sent)
             {
                 <div class="list-group-item" @key="loan.Id">
@@ -64,6 +66,7 @@ else
                         @if (loan.Status == "Pending")
                         {
                             <div>
+                                <!-- pulsante per annullare la richiesta di prestito -->
                                 <button class="btn btn-sm btn-outline-danger"
                                         disabled="@isProcessing"
                                         @onclick='() => ChangeStatusAsync(
@@ -78,6 +81,7 @@ else
         </div>
     }
 
+    <!-- Mostra le richieste ricevute -->
     <h2 class="mt-4">Richieste ricevute</h2>
 
     @if (received.Count == 0)
@@ -107,6 +111,7 @@ else
                     <div class="mt-2">
                         @if (loan.Status == "Pending")
                         {
+                            <!-- Mostra i pulsanti per accettare o rifiutare la richiesta di prestito -->
                             <button class="btn btn-sm btn-success me-2" disabled="@isProcessing" @onclick='() => ChangeStatusAsync(loan.Id, "accept")'>
                                 Accetta
                             </button>
@@ -120,6 +125,7 @@ else
 
                         @if (loan.Status == "Accepted")
                         {
+                            <!-- pulsante per registrare la restituzione -->
                             <button class="btn btn-sm btn-primary"
                                     disabled="@isProcessing"
                                     @onclick='() => ChangeStatusAsync(
@@ -144,7 +150,7 @@ else
 
     private string? error;
     private string? message;
-
+    // Carica le richieste di prestito inviate e ricevute all'inizializzazione della pagina
     protected override async Task OnInitializedAsync()
     {
         try
@@ -165,13 +171,13 @@ else
             isLoading = false;
         }
     }
-
+   // Carica le richieste di prestito inviate e ricevute
     private async Task LoadLoansAsync()
     {
         sent = await LoansApi.GetSentAsync();
         received = await LoansApi.GetReceivedAsync();
     }
-
+    // Cambia lo stato di una richiesta di prestito (accetta, rifiuta, annulla, restituisci)
     private async Task ChangeStatusAsync(Guid id, string action)
     {
         if (isProcessing)
@@ -197,7 +203,7 @@ else
             isProcessing = false;
         }
     }
-
+   // Restituisce l'etichetta leggibile per lo stato di una richiesta di prestito
     private static string StatusLabel(string status) =>
         status switch
         {

@@ -50,11 +50,11 @@ builder.Services.AddControllersWithViews(options =>
 });
 builder.Services.AddCors(options =>
 {
-options.AddPolicy("Blazor", policy =>
-    policy.WithOrigins("https://localhost:7102")
-          .AllowAnyHeader()
-          .AllowAnyMethod()
-          .AllowCredentials());
+    options.AddPolicy("Blazor", policy =>
+        policy.WithOrigins("https://localhost:7102")
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials());
 });
 
 

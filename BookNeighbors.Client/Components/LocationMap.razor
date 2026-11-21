@@ -6,9 +6,37 @@
 
 @inject IJSRuntime JS
 
+
 <div @ref="mapElement"
+     role="region"
+     aria-label="Mappa interattiva per la selezione della posizione"
      style="@($"width:100%;height:{Height};")">
 </div>
+
+@if (Editable)
+{
+    <div class="mt-2">
+        <button type="button"
+                class="btn btn-outline-primary"
+                @onclick="SelectMapCenterAsync">
+            Usa il centro della mappa
+        </button>
+
+        <p class="form-text">
+            Puoi spostare la mappa usando le frecce
+            della tastiera e premere questo pulsante
+            per selezionare la posizione centrale.
+        </p>
+
+        @if (centerSelected)
+        {
+            <p role="status" class="text-success">
+                Posizione selezionata correttamente.
+            </p>
+        }
+    </div>
+}
+
 
 @code {
     [Parameter]
@@ -86,4 +114,22 @@
 
         dotNetReference?.Dispose();
     }
+    
+private bool centerSelected;
+
+private async Task SelectMapCenterAsync()
+{
+    if (module is null)
+        return;
+
+    centerSelected = false;
+
+    await module.InvokeVoidAsync(
+        "selectMapCenter",
+        mapElement
+    );
+
+    centerSelected = true;
+}
+
 }

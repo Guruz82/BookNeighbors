@@ -14,7 +14,7 @@
 
 <AuthorizeView>
     <Authorized Context="authState">
-        <div class="alert alert-success">
+        <div class="alert alert-success" role="status">
             Sei già autenticato come @authState.User.Identity?.Name.
         </div>
         <a href="/">Torna alla Home</a>
@@ -23,7 +23,7 @@
     <NotAuthorized>
         @foreach (var error in formResult.ErrorList)
         {
-            <div class="alert alert-danger">@error</div>
+            <div class="alert alert-danger"  role="alert">@error</div>
         }
 
         <EditForm Model="@Input"

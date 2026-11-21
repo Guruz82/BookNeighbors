@@ -31,8 +31,7 @@ public class AccountController(
             UserName = email,
             Email = email,
             DisplayName = request.DisplayName.Trim(),
-            FirstName = request.FirstName?.Trim(),
-            LastName = request.LastName?.Trim(),
+        
             PrivacyNoticeAcknowledged = true,
             PrivacyNoticeAcknowledgedAt = DateTime.UtcNow
         };
@@ -72,8 +71,7 @@ public class AccountController(
             return BadRequest("Il nome visualizzato è obbligatorio.");
 
         user.DisplayName = request.DisplayName.Trim();
-        user.FirstName = request.FirstName?.Trim();
-        user.LastName = request.LastName?.Trim();
+    
         user.Bio = request.Bio?.Trim();
         user.UpdatedAt = DateTime.UtcNow;
 
@@ -106,8 +104,7 @@ public class AccountController(
             user.Id,
             user.Email ?? string.Empty,
             user.DisplayName,
-            user.FirstName,
-            user.LastName,
+      
             user.Bio,
             user.PrivacyNoticeAcknowledged
         );
