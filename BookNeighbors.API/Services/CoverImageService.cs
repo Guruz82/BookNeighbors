@@ -85,9 +85,7 @@ public class CoverImageService(IWebHostEnvironment environment, HttpClient httpC
         using var thumbnailResponse = await httpClient.PutAsync(thumbnailWriteUrl, thumbnailContent, cancellationToken);
         thumbnailResponse.EnsureSuccessStatusCode();
 
-        return new CoverImageResponse(
-            BuildObjectUrl(readUrl, imageName),
-            BuildObjectUrl(readUrl, thumbnailName));
+        return new CoverImageResponse(imageName, thumbnailName);
     }
 
     /// <summary>

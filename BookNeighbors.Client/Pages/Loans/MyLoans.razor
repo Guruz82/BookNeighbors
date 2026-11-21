@@ -90,7 +90,7 @@ else
                 </div>
             }
            
-            }
+            
         </div>
     </details>
     @* Mostra le richieste ricevute *@
@@ -163,19 +163,19 @@ else
     </details>
     @* Statistiche personali *@
    
-<details class="loan-section">
-    <summary class="loan-section-header" @onclick="() => showLoanStatistics = true">
-        <span>Le mie statistiche</span>
-        <i class="bi bi-bar-chart"></i>
-    </summary>
+    <details class="loan-section">
+        <summary class="loan-section-header" @onclick="() => showLoanStatistics = true">
+            <span>Le mie statistiche</span>
+            <i class="bi bi-bar-chart"></i>
+        </summary>
 
-    <div class="loan-section-content">
-        @if (showLoanStatistics)
-        {
-            <LoanStatistics />
-        }
-    </div>
-</details>
+        <div class="loan-section-content">
+            @if (showLoanStatistics)
+            {
+                <LoanStatistics />
+            }
+        </div>
+    </details>
 
 }
 @code {

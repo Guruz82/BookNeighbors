@@ -38,7 +38,7 @@ builder.Services.AddTransient<LoanChatConnectionService>();
 builder.Services.AddScoped<AuthenticationStateProvider, CookieAuthenticationStateProvider>();
 builder.Services.AddScoped<IAccountManagement>(sp => (IAccountManagement)sp.GetRequiredService<AuthenticationStateProvider>());
 builder.Services.AddScoped<LoanMessagesClientService>();
-builder.Services.AddTransient<LoanChatConnectionService>();
+
 builder.Services.AddTransient<NotificationRealtimeService>();
 builder.Services.AddScoped<PersonalLoanStatisticsClientService>();
 // Aggiunta dei servizi per l'autenticazione e l'autorizzazione

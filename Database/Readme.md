@@ -6,4 +6,4 @@ Gli script devono essere eseguiti nel seguente ordine:
 
 3- Test data.sql – Inserisce i dati dimostrativi utilizzati per i test, come utenti, librerie, libri, prestiti, visualizzazioni, messaggi e notifiche.
 
-L'ultimo script è facoltativo e permette di provare le funzionalità dell'applicazione senza dover inserire manualmente tutti i dati. Prima dell'esecuzione è necessario sostituire i segnaposto degli hash delle password degli utenti dimostrativi.
+L'ultimo script è facoltativo e permette di provare le funzionalità dell'applicazione senza dover inserire manualmente tutti i dati.  

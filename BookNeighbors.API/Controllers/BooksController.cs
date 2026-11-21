@@ -153,7 +153,9 @@ public class BooksController(UserManager<ApplicationUser> userManager, IBookServ
     }
 
     /// <summary>
-    /// Carica la copertina di un libro. L'immagine deve essere in formato JPEG o PNG e non deve superare i 3 MB.
+    /// Carica la copertina di un libro.
+    /// Formati supportati: JPG, PNG e WebP.
+    /// Dimensione massima del file: 2 MB.
     /// </summary>
     /// <param name="id"></param>
     /// <param name="file"></param>

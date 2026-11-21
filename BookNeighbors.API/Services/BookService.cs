@@ -287,7 +287,7 @@ public class BookService(ApplicationDbContext _dbContext, ICoverImageService _co
         // Eliminiamo la vecchia copertina solo dopo il salvataggio
         TryDeleteFiles(book.Id, oldImageUrl, oldThumbnailUrl);
 
-        return result;
+        return new CoverImageResponse(coverUrlResolver.Resolve(result.ImageUrl), coverUrlResolver.Resolve(result.ThumbnailUrl));
     }
 
     /// <summary>

@@ -3,8 +3,7 @@
 -- Server: PostgreSQL 17 / PostGis
 
 -- 10 utenti e 10 librerie fittizie, tutte in zone di Milano.
--- Gli account hanno EmailConfirmed=TRUE soltanto per facilitare il collaudo locale.
--- UUID fissi + ON CONFLICT: rieseguibile senza duplicare i dati.
+ 
 
 BEGIN;
 
@@ -12,10 +11,10 @@ BEGIN;
 DO $$
 BEGIN
     IF (SELECT COUNT(*) FROM public."Categories" WHERE "Name" IN ('Romanzi', 'Informatica', 'Gialli e thriller', 'Viaggi', 'Poesia', 'Storia', 'Filosofia', 'Fantascienza', 'Cucina e gastronomia', 'Arte e fotografia', 'Libri per bambini', 'Lingue straniere', 'Fantasy', 'Scienze', 'Fumetti', 'Economia e finanza', 'Avventura')) <> 17 THEN
-        RAISE EXCEPTION 'Prima eseguire 01_categories.sql';
+        RAISE EXCEPTION 'Prima eseguire categories.sql';
     END IF;
     IF (SELECT COUNT(*) FROM public."LoanRequestStatuses" WHERE "Name" IN ('Pending', 'Accepted', 'Rejected', 'Returned', 'Cancelled')) <> 5 THEN
-        RAISE EXCEPTION 'Prima eseguire 02_loan_request_statuses.sql';
+        RAISE EXCEPTION 'Prima eseguire loanrequeststatuses.sql';
     END IF;
 END $$;
 

@@ -1,0 +1,55 @@
+name: bookneighbors
+services:
+  db:
+    build:
+      context: .
+      dockerfile: Dockerfile.postgis
+    environment:
+      POSTGRES_DB: bookneighbors
+      POSTGRES_USER: bookneighbors
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Impostare POSTGRES_PASSWORD nel file .env}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./Database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./Database/Categories.sql:/docker-entrypoint-initdb.d/02-categories.sql:ro
+      - ./Database/LoanRequestStatuses.sql:/docker-entrypoint-initdb.d/03-loan-statuses.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bookneighbors -d bookneighbors"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      # Accetta X-Forwarded-Proto dal reverse proxy per gli URL HTTPS del browser.
+      ASPNETCORE_FORWARDEDHEADERS_ENABLED: "true"
+      ConnectionStrings__DefaultConnection: Host=db;Port=5432;Database=bookneighbors;Username=bookneighbors;Password=${POSTGRES_PASSWORD}
+      AppOptions__Client__AllowedOrigins__0: ${PUBLIC_URL:-https://localhost:8443}
+      AppOptions__OracleStorage__ReadUrl: ${ORACLE_READ_URL:-}
+      AppOptions__OracleStorage__WriteUrl: ${ORACLE_WRITE_URL:-}
+      BootstrapAdminEmail: ${BOOTSTRAP_ADMIN_EMAIL:-}
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.client
+    depends_on:
+      - api
+    ports:
+      - "127.0.0.1:8443:443"
+    environment:
+      PUBLIC_URL: ${PUBLIC_URL:-https://localhost:8443}
+    restart: unless-stopped
+
+volumes:
+  postgres_data:

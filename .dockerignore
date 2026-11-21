@@ -1,0 +1,11 @@
+**/bin/
+**/obj/
+**/.vs/
+**/.git/
+**/.DS_Store
+**/node_modules/
+.env
+**/appsettings.Development.json
+**/secrets.json
+**/usersecrets/
+docker/certs/
