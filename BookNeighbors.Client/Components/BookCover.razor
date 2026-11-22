@@ -1,14 +1,16 @@
 
 @using BookNeighbors.Client.Services
 @inject BookClientService BooksApi
-
+@* Mostra la copertina di un libro *@
 <div class="book-cover" style="width:@Width; height:@Height;">
     @if (!string.IsNullOrWhiteSpace(currentUrl))
     {
+        @* Se la URL corrente non è vuota, mostra l'immagine *@
         <img src="@currentUrl" alt="Copertina di @Title" loading="lazy" @onerror="HandleImageError" />
     }
     else
     {
+        @* Se la URL corrente è vuota, mostra un segnaposto *@
         <div class="book-cover-placeholder" role="img" aria-label="Copertina non disponibile">
             <i class="bi bi-book"></i>
         </div>
@@ -34,6 +36,7 @@
     /// </summary>
     protected override void OnParametersSet()
     {
+        // Se il componente è già stato inizializzato e le URL delle immagini non sono cambiate, non fare nulla
         if (initialized && previousThumbnailUrl == ThumbnailUrl && previousImageUrl == ImageUrl && previousPreferFullImage == PreferFullImage)
             return;
 

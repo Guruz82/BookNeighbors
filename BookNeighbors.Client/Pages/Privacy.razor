@@ -3,60 +3,130 @@
 
 <PageTitle>Privacy - Book Neighbors</PageTitle>
 
-<h1>Informativa sulla privacy</h1>
+<div class="container py-4" style="max-width: 900px;">
 
-<p>
-    Book Neighbors è un'applicazione dimostrativa
-    sviluppata nell'ambito di un progetto universitario.
-    Consente agli utenti di condividere informazioni
-    sui propri libri e gestire richieste di prestito.
-</p>
+    <h1>Informativa sulla privacy</h1>
 
-<h2>Dati trattati</h2>
+    <p class="lead">
+        Book Neighbors è un'applicazione dimostrativa sviluppata nell'ambito di un progetto universitario. L'eventuale versione pubblicata online avrà esclusivamente finalità dimostrative e non consentirà la registrazione di nuovi utenti.    </p>
 
-<p>
-    L'applicazione gestisce i dati dell'account,
-    le informazioni inserite nel profilo,
-    i libri pubblicati, le richieste di prestito
-    e la posizione approssimativa delle librerie.
-</p>
+    <div class="alert alert-info" role="note">
+        Questa informativa descrive il funzionamento del prototipo.
+        Prima di un'eventuale pubblicazione del servizio dovranno essere completate le informazioni previste dalla normativa sulla protezione dei dati personali.
+    </div>
 
-<h2>Finalità</h2>
+    <section class="mb-4" aria-labelledby="dati">
+        <h2 id="dati" class="h4">1. Dati trattati</h2>
+        <p>
+            Durante l'utilizzo dell'applicazione possono essere trattate le seguenti informazioni:
+        </p>
+        <ul>
+            <li>Email, nickname e dati necessari all'autenticazione.</li>
+            <li>Informazioni facoltative inserite nel profilo.</li>
+            <li>Nome e posizione approssimativa della libreria.</li>
+            <li>Libri inseriti, categorie e immagini delle copertine.</li>
+            <li>Richieste di prestito e relativi stati.</li>
+            <li>Messaggi scambiati nelle conversazioni sui prestiti.</li>
+            <li>Notifiche e dati statistici sull'utilizzo dell'applicazione.</li>
+        </ul>
+        <p>
+            Non viene richiesto l'inserimento di nome e cognome
+            durante la registrazione.
+        </p>
+    </section>
 
-<p>
-    I dati vengono utilizzati per consentire
-    l'autenticazione, la gestione della libreria
-    personale, la ricerca geolocalizzata dei libri
-    e le richieste di prestito.
-</p>
+    <section class="mb-4" aria-labelledby="finalita">
+        <h2 id="finalita" class="h4">2. Finalità del trattamento</h2>
+        <p>
+            I dati sono utilizzati per permettere la registrazione e l'accesso degli utenti, la gestione delle librerie personali, la ricerca dei libri disponibili nelle vicinanze e la gestione delle richieste di prestito.
+        </p>
+        <p>
+            I dati relativi alle visualizzazioni dei libri e alle richieste di prestito vengono inoltre utilizzati per produrre statistiche sull'utilizzo dell'applicazione.
+        </p>
+    </section>
 
-<h2>Posizione geografica</h2>
+    <section class="mb-4" aria-labelledby="posizione">
+        <h2 id="posizione" class="h4">3. Posizione geografica</h2>
+        <p>
+            La condivisione della libreria sulla mappa è facoltativa e richiede una scelta esplicita dell'utente.
+        </p>
+        <p>
+            Per ridurre la precisione delle informazioni geografiche, le coordinate vengono arrotondate a tre cifre decimali prima del salvataggio nel database.        </p>
+        <p>
+            L'utente può modificare la posizione associata alla propria libreria oppure disattivarne la pubblicazione. La posizione mostrata sulla mappa non deve essere considerata un indirizzo esatto.
+        </p>
+    </section>
 
-<p>
-    La pubblicazione della libreria sulla mappa
-    è facoltativa. La posizione viene approssimata
-    prima del salvataggio e può essere nascosta
-    disattivando la pubblicazione della libreria.
-</p>
+    <section class="mb-4" aria-labelledby="visibilita">
+        <h2 id="visibilita" class="h4">4. Visibilità dei dati</h2>
+        <p>
+            I libri appartenenti alle librerie pubblicate possono essere visualizzati attraverso la ricerca e la mappa.
+        </p>
+        <p>
+            I messaggi relativi a una richiesta di prestito sono accessibili soltanto agli utenti coinvolti nella conversazione. Le notifiche personali sono riservate
+            al rispettivo destinatario.
+        </p>
+    </section>
 
-<h2>Servizi esterni</h2>
+    <section class="mb-4" aria-labelledby="cookie">
+        <h2 id="cookie" class="h4">5. Cookie e sicurezza</h2>
+        <p>
+            Book Neighbors utilizza cookie tecnici necessari per gestire l'autenticazione degli utenti e la protezione delle richieste da attacchi CSRF.
+        </p>
+        <p>
+            Le password vengono gestite attraverso ASP.NET Core Identity e non sono memorizzate in chiaro.
+            Le funzionalità riservate prevedono controlli di autenticazione e autorizzazione.
+        </p>
+    </section>
 
-<p>
-    L'applicazione utilizza OpenStreetMap per
-    visualizzare le mappe e può consultare
-    Google Books e Open Library per recuperare
-    le informazioni bibliografiche.
-</p>
+    <section class="mb-4" aria-labelledby="servizi">
+        <h2 id="servizi" class="h4">6. Servizi esterni</h2>
+        <p>
+            Per alcune funzionalità l'applicazione utilizza servizi forniti da terze parti:
+        </p>
+        <ul>
+            <li>OpenStreetMap, per la visualizzazione delle mappe.</li>
+            <li>Google Books e Open Library, per il recupero dei metadati dei libri.</li>
+            <li>Oracle Cloud Object Storage, per la conservazione delle copertine caricate dagli utenti.</li>
+        </ul>
+        <p>
+            Il caricamento delle risorse provenienti da servizi esterni può comportare la comunicazione di dati tecnici, come l'indirizzo IP, ai rispettivi fornitori.
+        </p>
+        <p>
+            Book Neighbors non prevede funzionalità di tracciamento o profilazione degli utenti e non memorizza intenzionalmente gli indirizzi IP nel database applicativo.
+            Durante la navigazione possono comunque essere trattati dati tecnici necessari alla comunicazione con i server e i servizi esterni utilizzati dall'applicazione.
+        </p>
+    </section>
 
-<h2>Gestione dei dati</h2>
+    <section class="mb-4" aria-labelledby="gestione">
+        <h2 id="gestione" class="h4">7. Gestione dei propri dati</h2>
+        <p>
+            Gli utenti possono aggiornare le informazioni del proprio profilo, modificare i libri inseriti e gestire la pubblicazione della libreria personale.
+        </p>
+        <p>
+            La possibilità di modificare o nascondere una risorsa non equivale necessariamente alla cancellazione  completa dei dati conservati nel sistema.
+            Gli utenti possono anche richiedere la cancellazione dei propri dati in qualsiasi momento, contattando il responsabile del trattamento.
+ 
+        </p>
+    </section>
 
-<p>
-    Gli utenti possono aggiornare i dati
-    del proprio profilo, modificare la libreria
-    personale e gestire i libri pubblicati.
-</p>
+    <section class="mb-4" aria-labelledby="diritti">
+        <h2 id="diritti" class="h4">8. Diritti degli interessati</h2>
+        <p>
+            La normativa sulla protezione dei dati personali riconosce, nei casi previsti, il diritto di accesso, rettifica, cancellazione, limitazione del trattamento, opposizione e portabilità dei dati.
+            Gli utenti possono esercitare questi diritti contattando il responsabile del trattamento.
+        </p>
+        <p>
+            È inoltre previsto il diritto di presentare un reclamo al Garante per la protezione dei dati personali.
+        </p>
+    </section>
 
-<p class="text-muted">
-    Informativa dimostrativa da completare
-    prima di un'eventuale pubblicazione del servizio.
-</p>
+    <div class="alert alert-secondary" role="note">
+        <strong>Nota sul prototipo:</strong>
+        Book Neighbors non è destinato attualmente all'utilizzo pubblico. L'eventuale pubblicazione di una versione dimostrativa prevederà la disabilitazione della registrazione e l'utilizzo di dati fittizi. Qualora in futuro l'applicazione venisse trasformata in un servizio aperto agli utenti, sarà necessario predisporre un'informativa completa e definire le modalità di esercizio dei diritti previsti dal GDPR.
+    </div>
+
+    <a href="/" class="btn btn-outline-primary">
+        Torna alla Home
+    </a>
+</div>
